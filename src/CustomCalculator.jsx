@@ -225,6 +225,11 @@ function bestRational(frac, maxDenom = 100) {
 }
 
 // ── PRESETS ──
+// N = 节气分段数。
+// 地球预设取 24，源自中国二十四节气——这是文明的选择，不是宇宙的规律。
+// 公式对 N 无硬性要求（N≥2 即可）：N 只决定甲型窗口的宽窄，
+// 置闰的数学结构（无中气规则、Y₁/Tᵢ 余分、p/q 章法）在任意 N 下完全一致。
+// ⚠  慎重修改：N 牵动 Z、lo、hi、历法表全部导出量，改之前先确认意图。
 const PRESETS = {
   earth: {
     stars: [{ name: "Sun", mass: 1.0 }],
