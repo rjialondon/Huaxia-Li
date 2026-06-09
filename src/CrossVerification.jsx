@@ -36,7 +36,7 @@ const T = {
     intercalaryFreq: "置闰频率",
     perYear: "年",
     perLocalYear: "本地年",
-    zhangVerify: "章法验证（19年7闰）：",
+    zhangVerify: (p, q) => `最优章法 (${p}/${q})：`,
     error: "误差",
     keplerEffect: "开普勒效应",
     meanZ: "平均中气间隔",
@@ -112,7 +112,7 @@ const T = {
     intercalaryFreq: "Intercalary frequency",
     perYear: "years",
     perLocalYear: "local years",
-    zhangVerify: "Zhang Rule (19yr, 7 leap):",
+    zhangVerify: (p, q) => `Best Zhang Period (${p}/${q}):`,
     error: "Error",
     keplerEffect: "Keplerian Effect",
     meanZ: "Mean Zhongqi interval",
@@ -175,12 +175,10 @@ function sysDisplayName(name, lang, full = false) {
   return full ? name : name.split(" ")[0];
 }
 
-const N_PARAM = 24;
-
 const SYSTEMS = [
   {
     id: "earth", category: "太阳系验证基线", name: "地球 Earth", emoji: "🌍", distance: "0 ly",
-    source: "NASA JPL Planetary Fact Sheets", m: 1,
+    source: "NASA JPL Planetary Fact Sheets", m: 1, N: 24,
     stars: [{ name: "太阳 Sun", mass: 1.0 }],
     Y1: 365.25, localDay: 24.0, eccentricity: 0.0167, tidallyLocked: false,
     satellites: [{ name: "月球 Moon", Ti: 29.5306 }],
@@ -190,7 +188,7 @@ const SYSTEMS = [
   },
   {
     id: "mars", category: "太阳系验证基线", name: "火星 Mars", emoji: "🔴", distance: "0 ly",
-    source: "NASA JPL", m: 1, stars: [{ name: "太阳 Sun", mass: 1.0 }],
+    source: "NASA JPL", m: 1, N: 24, stars: [{ name: "太阳 Sun", mass: 1.0 }],
     Y1: 686.97, localDay: 24.66, eccentricity: 0.0934, tidallyLocked: false,
     satellites: [{ name: "火卫一 Phobos", Ti: 0.319 }, { name: "火卫二 Deimos", Ti: 1.26 }],
     overlays: [],
@@ -199,7 +197,7 @@ const SYSTEMS = [
   },
   {
     id: "jupiter", category: "太阳系验证基线", name: "木星 Jupiter", emoji: "🟠", distance: "0 ly",
-    source: "NASA JPL", m: 1, stars: [{ name: "太阳 Sun", mass: 1.0 }],
+    source: "NASA JPL", m: 1, N: 24, stars: [{ name: "太阳 Sun", mass: 1.0 }],
     Y1: 4332.6, localDay: 9.93, eccentricity: 0.0489, tidallyLocked: false,
     satellites: [
       { name: "木卫一 Io", Ti: 1.769 }, { name: "木卫二 Europa", Ti: 3.551 },
@@ -211,7 +209,7 @@ const SYSTEMS = [
   },
   {
     id: "venus", category: "太阳系验证基线", name: "金星 Venus", emoji: "🌕", distance: "0 ly",
-    source: "NASA JPL", m: 1, stars: [{ name: "太阳 Sun", mass: 1.0 }],
+    source: "NASA JPL", m: 1, N: 24, stars: [{ name: "太阳 Sun", mass: 1.0 }],
     Y1: 224.7, localDay: 2802, eccentricity: 0.0068, tidallyLocked: false,
     satellites: [], overlays: [],
     notes_zh: "极端退化测试：逆行超慢自转，本地日 > 恒星年，无卫星。公式输出最极端纯太阳历。",
@@ -219,7 +217,7 @@ const SYSTEMS = [
   },
   {
     id: "trappist1e", category: "系外行星：潮汐锁定", name: "TRAPPIST-1 e", emoji: "🔵", distance: "40.7 ly",
-    source: "NASA Spitzer/JWST, Agol et al. 2021", m: 1,
+    source: "NASA Spitzer/JWST, Agol et al. 2021", m: 1, N: 24,
     stars: [{ name: "TRAPPIST-1 (M8V)", mass: 0.089 }],
     Y1: 6.101, localDay: 6.101 * 24, eccentricity: 0.005, tidallyLocked: true,
     satellites: [],
@@ -232,7 +230,7 @@ const SYSTEMS = [
   },
   {
     id: "trappist1f", category: "系外行星：潮汐锁定", name: "TRAPPIST-1 f", emoji: "🔵", distance: "40.7 ly",
-    source: "NASA Spitzer/JWST, Agol et al. 2021", m: 1,
+    source: "NASA Spitzer/JWST, Agol et al. 2021", m: 1, N: 24,
     stars: [{ name: "TRAPPIST-1 (M8V)", mass: 0.089 }],
     Y1: 9.207, localDay: 9.207 * 24, eccentricity: 0.01, tidallyLocked: true,
     satellites: [],
@@ -245,7 +243,7 @@ const SYSTEMS = [
   },
   {
     id: "proximab", category: "系外行星：最近邻", name: "Proxima Centauri b", emoji: "🟤", distance: "4.24 ly",
-    source: "ESO HARPS, Anglada-Escudé et al. 2016", m: 1,
+    source: "ESO HARPS, Anglada-Escudé et al. 2016", m: 1, N: 24,
     stars: [{ name: "Proxima Centauri (M5.5V)", mass: 0.122 }],
     Y1: 11.186, localDay: 11.186 * 24, eccentricity: 0.02, tidallyLocked: true,
     satellites: [],
@@ -255,7 +253,7 @@ const SYSTEMS = [
   },
   {
     id: "kepler16b", category: "系外行星：环双星", name: "Kepler-16b", emoji: "🪐", distance: "245 ly",
-    source: "NASA Kepler, Doyle et al. 2011", m: 2,
+    source: "NASA Kepler, Doyle et al. 2011", m: 2, N: 24,
     stars: [{ name: "Kepler-16A (K, 0.69M☉)", mass: 0.69 }, { name: "Kepler-16B (M, 0.20M☉)", mass: 0.20 }],
     Y1: 228.776, localDay: 24, eccentricity: 0.0069, tidallyLocked: false,
     binaryPeriod: 41.08,
@@ -266,7 +264,7 @@ const SYSTEMS = [
   },
   {
     id: "toi5624e", category: "系外行星：2026新发现", name: "TOI-5624 e", emoji: "⭐", distance: "331 ly",
-    source: "TESS, Bonfant et al. April 2026", m: 1,
+    source: "TESS, Bonfant et al. April 2026", m: 1, N: 24,
     stars: [{ name: "TOI-5624 (Sun-like)", mass: 0.87 }],
     Y1: 21.49, localDay: 21.49 * 24, eccentricity: 0.0, tidallyLocked: true,
     satellites: [],
@@ -276,7 +274,7 @@ const SYSTEMS = [
   },
   {
     id: "bcentaurib", category: "系外行星：极端参数", name: "b Centauri (AB) b", emoji: "💫", distance: "325 ly",
-    source: "ESO SPHERE VLT, Janson et al. 2021", m: 2,
+    source: "ESO SPHERE VLT, Janson et al. 2021", m: 2, N: 24,
     stars: [{ name: "b Cen A (B3V, ~6M☉)", mass: 6.0 }, { name: "b Cen B (~4M☉)", mass: 4.0 }],
     Y1: 7170 * 365.25, localDay: 10, eccentricity: 0.4, tidallyLocked: false,
     satellites: [], overlays: [],
@@ -285,7 +283,7 @@ const SYSTEMS = [
   },
   {
     id: "gj536c", category: "系外行星：宜居带", name: "Gliese 536 c", emoji: "🟢", distance: "32.7 ly",
-    source: "HARPS, 2025", m: 1,
+    source: "HARPS, 2025", m: 1, N: 24,
     stars: [{ name: "GJ 536 (M1V)", mass: 0.52 }],
     Y1: 32.76, localDay: 32.76 * 24, eccentricity: 0.0, tidallyLocked: true,
     satellites: [], overlays: [],
@@ -294,12 +292,25 @@ const SYSTEMS = [
   },
 ];
 
+// ── HELPERS ──
+function bestRational(frac, maxDenom = 100) {
+  let best = { p: 1, q: 1, err: Math.abs(1 - frac) };
+  for (let q = 1; q <= maxDenom; q++) {
+    const p = Math.round(frac * q);
+    if (p <= 0) continue;
+    const err = Math.abs(p / q - frac);
+    if (err < best.err) best = { p, q, err };
+    if (err < 1e-6) break;
+  }
+  return best;
+}
+
 // ── FORMULA ENGINE ──
-function classify(Ti, Y1, localDayHours, lang) {
+function classify(Ti, Y1, localDayHours, lang, N) {
   const t = T[lang];
   const localDayDays = localDayHours / 24;
-  const lo = Y1 / N_PARAM;
-  const hi = (2 * Y1) / N_PARAM;
+  const lo = Y1 / N;
+  const hi = (2 * Y1) / N;
   if (Ti < localDayDays) return { mode: "∅", label: t.subDiurnal, color: "#6b7280", reason: `Tᵢ(${Ti.toFixed(3)}d) < ${lang==="zh"?"本地日":"local day"}(${localDayDays.toFixed(2)}d)` };
   if (Ti >= lo && Ti < hi) return { mode: lang==="zh"?"甲型A":"Mode A", label: t.modeAIntercalary, color: "#10b981", reason: `${lo.toFixed(2)} ≤ ${Ti.toFixed(3)} < ${hi.toFixed(2)}` };
   if (Ti < lo) return { mode: lang==="zh"?"乙型B":"Mode B", label: t.modeBFast, color: "#3b82f6", reason: `Tᵢ(${Ti.toFixed(3)}d) < ${lang==="zh"?"下限":"lower"}(${lo.toFixed(2)}d)` };
@@ -308,8 +319,8 @@ function classify(Ti, Y1, localDayHours, lang) {
 
 function analyze(sys, lang) {
   const t = T[lang];
-  const Z = (2 * sys.Y1) / N_PARAM;
-  const lo = sys.Y1 / N_PARAM;
+  const Z = (2 * sys.Y1) / sys.N;
+  const lo = sys.Y1 / sys.N;
   const hi = Z;
   const isLocked = sys.tidallyLocked;
   const dayExceedsYear = sys.localDay > sys.Y1 * 24;
@@ -317,7 +328,7 @@ function analyze(sys, lang) {
   const shichen = shichenValid ? sys.localDay / 12 : null;
 
   const sats = sys.satellites.map((s) => {
-    const cls = classify(s.Ti, sys.Y1, sys.localDay, lang);
+    const cls = classify(s.Ti, sys.Y1, sys.localDay, lang, sys.N);
     return { ...s, ...cls, cyclesPerYear: sys.Y1 / s.Ti, ratioZ: s.Ti / Z };
   });
 
@@ -390,6 +401,7 @@ function Detail({ sys, lang }) {
           <Cell label={t.localDay} value={sys.localDay < 48 ? `${sys.localDay.toFixed(2)} ${t.hours}` : `${(sys.localDay/24).toFixed(1)} ${t.days}`} />
           <Cell label={t.shichen} value={a.shichenValid ? `${a.shichen.toFixed(2)} ${t.hours}` : a.isLocked ? t.undefinedLocked : t.degenerate} />
           {sys.m >= 2 && sys.binaryPeriod && <Cell label={t.binaryPeriod} value={`${sys.binaryPeriod.toFixed(2)} ${t.days}`} sub={t.overlaySource} />}
+          <Cell label="N" value={sys.N} sub={lang === "zh" ? "节气分段 (设计参数)" : "solar term div. (design choice)"} />
         </div>
       </div>
 
@@ -448,11 +460,14 @@ function Detail({ sys, lang }) {
             <div>Y₁/Tᵢ = {a.intercalary.monthsPerYear.toFixed(4)} {t.monthsPerYear}</div>
             <div>{t.annualFrac} = {a.intercalary.fraction.toFixed(4)}</div>
             <div>{t.intercalaryFreq} ≈ 1/{a.intercalary.intervalYears.toFixed(2)} {sys.id === "earth" ? t.perYear : t.perLocalYear}</div>
-            {sys.id === "earth" && (
-              <div style={{ marginTop: 8, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
-                <b>{t.zhangVerify}</b> 7/19 = {(7/19).toFixed(5)} vs {a.intercalary.fraction.toFixed(5)} → {t.error} = {(Math.abs(7/19 - a.intercalary.fraction)/a.intercalary.fraction*100).toFixed(3)}%
-              </div>
-            )}
+            {(() => {
+              const br = bestRational(a.intercalary.fraction);
+              return (
+                <div style={{ marginTop: 8, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                  <b>{t.zhangVerify(br.p, br.q)}</b> {br.p}/{br.q} = {(br.p/br.q).toFixed(5)} vs {a.intercalary.fraction.toFixed(5)} → {t.error} = {(Math.abs(br.p/br.q - a.intercalary.fraction)/a.intercalary.fraction*100).toFixed(3)}%
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

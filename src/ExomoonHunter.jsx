@@ -1,6 +1,16 @@
 import { useState, useMemo } from "react";
 
-const N = 24;
+function bestRational(frac, maxDenom = 100) {
+  let best = { p: 1, q: 1, err: Math.abs(1 - frac) };
+  for (let q = 1; q <= maxDenom; q++) {
+    const p = Math.round(frac * q);
+    if (p <= 0) continue;
+    const err = Math.abs(p / q - frac);
+    if (err < best.err) best = { p, q, err };
+    if (err < 1e-6) break;
+  }
+  return best;
+}
 
 const T = {
   zh: {
@@ -24,7 +34,7 @@ const T = {
     leapFreq: "置闰频率 ≈ 每",
     years: "年",
     localYears: "本地年",
-    zhangVerify: "章法验证：7/19 =",
+    zhangVerify: (p, q) => `最优章法 (${p}/${q}) =`,
     error: "误差",
     conclusionTitle: "发现",
     conclusion1: "除地球月球外，存在至少一个系外卫星候选体满足甲型条件——这意味着华夏历的置闰机制不仅仅是地球的特例，而是在其他恒星系统中也能被实例化的通用结构。",
@@ -32,7 +42,7 @@ const T = {
     conclusion3: "目前仅地球月球是唯一已知的甲型实例。",
     conclusionNote: "需要注意：截至2026年，尚无任何系外卫星被正式确认。上述候选体均需进一步验证。但公式的价值在于——它提前给出了判定标准：只要 Y₁/N ≤ Tᵢ < 2Y₁/N，置闰自动成立，无需重新设计。标准在那里等着数据。",
     footer1: "数据来源：Teachey & Kipping 2018 · Kipping 2022 · Kral et al. 2026 · NASA Kepler/HST · ESO VLTI/GRAVITY",
-    footer2: "分析框架：贾润章《华夏历》2026 · §4 甲型条件 Y₁/N ≤ Tᵢ < 2Y₁/N",
+    footer2: "分析框架：贾润章《华夏历》2026 · §4 甲型条件 Y₁/N ≤ Tᵢ < 2Y₁/N · N=24 为地球型参考值（可变设计参数）",
     orbitLabel: "绕",
     planetYear: "行星年",
     zhongqi: "Z 中气间隔",
@@ -77,7 +87,7 @@ const T = {
     leapFreq: "Intercalary frequency ≈ every",
     years: "years",
     localYears: "local years",
-    zhangVerify: "Zhang rule: 7/19 =",
+    zhangVerify: (p, q) => `Best Zhang Period (${p}/${q}) =`,
     error: "error",
     conclusionTitle: "Findings",
     conclusion1: "Beyond Earth's Moon, at least one exomoon candidate satisfies Mode A — meaning the Huaxia Calendar's intercalary mechanism is not Earth-specific but a universal structure instanciable in other stellar systems.",
@@ -85,7 +95,7 @@ const T = {
     conclusion3: "Earth's Moon is currently the only known Mode A instance.",
     conclusionNote: "Note: As of 2026, no exomoon has been officially confirmed. All candidates require further verification. The formula's value lies in providing the criterion in advance: whenever Y₁/N ≤ Tᵢ < 2Y₁/N, intercalation is automatic. The standard awaits the data.",
     footer1: "Data: Teachey & Kipping 2018 · Kipping 2022 · Kral et al. 2026 · NASA Kepler/HST · ESO VLTI/GRAVITY",
-    footer2: "Framework: Jia Runzhang, Huaxia Li (2026) · §4 Mode A condition Y₁/N ≤ Tᵢ < 2Y₁/N",
+    footer2: "Framework: Jia Runzhang, Huaxia Li (2026) · §4 Mode A condition Y₁/N ≤ Tᵢ < 2Y₁/N · N=24 is Earth-analogue reference (variable design parameter)",
     orbitLabel: "orbiting",
     planetYear: "Planet Year",
     zhongqi: "Z Zhongqi Interval",
@@ -118,7 +128,7 @@ const T = {
 
 const CANDIDATES = [
   {
-    id: "kepler1625b",
+    id: "kepler1625b", N: 24,
     host: "Kepler-1625 b",
     hostDesc: "类木气态巨行星，~10 MJ，半径≈Jupiter",
     star: "Kepler-1625 (类太阳G型恒星, 1.079 M☉)",
@@ -135,7 +145,7 @@ const CANDIDATES = [
     localDay: 10, // gas giant, assume fast rotation ~10h
   },
   {
-    id: "kepler1708b",
+    id: "kepler1708b", N: 24,
     host: "Kepler-1708 b",
     hostDesc: "类木气态巨行星，<4.6 MJ，半径≈0.89 RJ",
     star: "Kepler-1708 (类太阳恒星)",
@@ -152,7 +162,7 @@ const CANDIDATES = [
     localDay: 10,
   },
   {
-    id: "hd206893b",
+    id: "hd206893b", N: 24,
     host: "HD 206893 B",
     hostDesc: "褐矮星/超木星，~20-28 MJ，半径≈1.25 RJ",
     star: "HD 206893 (F5V主序星, ~1.3 M☉)",
@@ -170,7 +180,7 @@ const CANDIDATES = [
   },
   // ── Hypothetical Earth-analogue for comparison ──
   {
-    id: "earth_ref",
+    id: "earth_ref", N: 24,
     host: "地球 (参考基线)",
     hostDesc: "岩质行星，1 M⊕",
     star: "太阳 (G2V, 1.0 M☉)",
@@ -189,8 +199,8 @@ const CANDIDATES = [
 ];
 
 function analyzeCandidate(c) {
-  const Z = (2 * c.Y1) / N;
-  const lo = c.Y1 / N;
+  const Z = (2 * c.Y1) / c.N;
+  const lo = c.Y1 / c.N;
   const hi = Z;
   const localDayDays = c.localDay / 24;
 
@@ -354,7 +364,7 @@ function CandidateCard({ c, t, lang }) {
                   <div>Y₁/Tᵢ = {c.Y1.toFixed(2)} / {c.Ti_est.toFixed(1)} = <b>{mpy.toFixed(4)}</b> {t.monthsPerYear}</div>
                   <div>{t.intMonths} = {Math.floor(mpy)} · {t.fraction} = {frac.toFixed(4)}</div>
                   <div>{t.leapFreq} <b>{interval.toFixed(2)}</b> {c.host.includes("地球") ? t.years : t.localYears} · {t.leapMonth}</div>
-                  {c.id === "earth_ref" && <div style={{ color: "var(--dim2)", marginTop: 4 }}>{t.zhangVerify} {(7/19).toFixed(5)} vs {frac.toFixed(5)} → {t.error} {(Math.abs(7/19 - frac)/frac*100).toFixed(3)}%</div>}
+                  {(() => { const br = bestRational(frac); return <div style={{ color: "var(--dim2)", marginTop: 4 }}>{t.zhangVerify(br.p, br.q)} {(br.p/br.q).toFixed(5)} vs {frac.toFixed(5)} → {t.error} {(Math.abs(br.p/br.q - frac)/frac*100).toFixed(3)}%</div>; })()}
                 </>
               );
             })()}

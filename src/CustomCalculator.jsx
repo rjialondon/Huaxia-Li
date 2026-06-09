@@ -88,7 +88,7 @@ const L = {
     rFrac: "年余分",
     rFreq: "置闰频率 ≈ 每",
     rLocalYr: "本地年一次",
-    rZhang: "章法验证（19年7闰）误差",
+    rZhang: "最优章法近似",
     rOverlays: "乙型叠合体",
     rOutput: "公式输出",
     rCalType: "历法类型",
@@ -189,7 +189,7 @@ const L = {
     rFrac: "Annual fraction",
     rFreq: "Intercalary frequency ≈ every",
     rLocalYr: "local years",
-    rZhang: "Zhang Rule (19yr/7leap) error",
+    rZhang: "Best Zhang Approximation",
     rOverlays: "Mode B Overlays",
     rOutput: "Formula Output",
     rCalType: "Calendar Type",
@@ -208,6 +208,19 @@ const L = {
     calTiZ: (Ti, Z) => `Tᵢ = ${Ti} d  ·  Z = ${Z} d`,
   },
 };
+
+// ── HELPERS ──
+function bestRational(frac, maxDenom = 100) {
+  let best = { p: 1, q: 1, err: Math.abs(1 - frac) };
+  for (let q = 1; q <= maxDenom; q++) {
+    const p = Math.round(frac * q);
+    if (p <= 0) continue;
+    const err = Math.abs(p / q - frac);
+    if (err < best.err) best = { p, q, err };
+    if (err < 1e-6) break;
+  }
+  return best;
+}
 
 // ── PRESETS ──
 const PRESETS = {
@@ -361,9 +374,11 @@ function buildReport(state, r, t, lang) {
       `  ${t.rIntMonth} = ${Math.floor(r.intercalary.monthsPerYear)}`,
       `  ${t.rFrac} = ${r.intercalary.fraction.toFixed(5)}`,
       `  ${t.rFreq} ${r.intercalary.interval.toFixed(2)} ${t.rLocalYr}`,
-      ...(Math.abs(r.intercalary.fraction - 7 / 19) < 0.02
-        ? [`  ${t.rZhang}: ${(Math.abs(7 / 19 - r.intercalary.fraction) / r.intercalary.fraction * 100).toFixed(3)}%`]
-        : []),
+      ...(() => {
+        const br = bestRational(r.intercalary.fraction);
+        const err = (Math.abs(br.p / br.q - r.intercalary.fraction) / r.intercalary.fraction * 100).toFixed(3);
+        return [`  ${t.rZhang}: ${br.p}/${br.q}  (${zh ? "误差" : "error"}: ${err}%)`];
+      })(),
       "",
     ] : []),
     ...((state.overlays || []).length > 0 ? [
