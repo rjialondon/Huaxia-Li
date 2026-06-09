@@ -456,7 +456,7 @@ function keplerTermTime(k, N, ecc, Y1) {
   return yr * Y1 + (M / (2 * Math.PI)) * Y1;
 }
 
-function generateCalendar(state, r, numYears = 19) {
+function generateCalendar(state, r) {
   const { Y1, ecc, N } = state;
   const Z = r.Z;
   if (N < 2 || Y1 <= 0) return { type: "solar", terms: [], Y1, N, ecc };
@@ -478,6 +478,11 @@ function generateCalendar(state, r, numYears = 19) {
 
   const Ti = r.modeA[0].Ti;
   if (Ti <= 0) return { type: "solar", terms: [], Y1, N, ecc };
+
+  // 章法周期：从 Y₁/Tᵢ 余分的最优有理逼近推出——地球得19，其他行星得各自的 q
+  // 同《授时历》「求章法」思路：章 = 置闰月数/章年 最简分数的分母
+  const frac0 = (Y1 / Ti) - Math.floor(Y1 / Ti);
+  const numYears = frac0 > 0.001 ? Math.min(bestRational(frac0, 100).q, 60) : 19;
 
   // Zhongqi: N/2 per year, interval Z = 2Y₁/N
   // Global j-th Zhongqi is at j*Z (mean), or Keplerian: yr*Y₁ + keplerTermTime(2*(j%halfN), N, ecc, Y₁)
@@ -535,11 +540,9 @@ function generateCalendar(state, r, numYears = 19) {
   const totalLeap = years.filter(y => y.hasLeap).length;
   const totalDaysSum = years.reduce((s, y) => s + y.totalDays, 0);
   const expectedDays = Math.round(numYears * Y1);
-  // Theoretical intercalary count from Y₁/Tᵢ ratio (epoch-independent)
-  const frac = (Y1 / Ti) - Math.floor(Y1 / Ti);
-  const theoreticalLeap = Math.round(numYears * frac);
+  const theoreticalLeap = Math.round(numYears * frac0);
   const zhangQuality = theoreticalLeap > 0
-    ? (Math.abs(frac - theoreticalLeap / numYears) / (theoreticalLeap / numYears) * 100).toFixed(4)
+    ? (Math.abs(frac0 - theoreticalLeap / numYears) / (theoreticalLeap / numYears) * 100).toFixed(4)
     : "N/A";
 
   return { type: "lunisolar", years, totalLeap, theoreticalLeap, zhangQuality, numYears, Ti, Z, Y1, totalDaysSum, expectedDays };
