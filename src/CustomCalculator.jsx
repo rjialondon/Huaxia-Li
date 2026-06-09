@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 
 // ── i18n ──
 const L = {
@@ -94,6 +94,17 @@ const L = {
     rCalType: "历法类型",
     rGreg: "公历兼容性",
     rFooter: "分析框架：贾润章《华夏历》2026 · §4 通用行星公式",
+    calendarShow: "▼ 历法表",
+    calendarHide: "▲ 历法表",
+    calYearLabel: "年", calMonthsLabel: "月数", calLeapLabel: "置闰", calDaysLabel: "天数",
+    calLeapMark: (n) => `闰${n}月`,
+    calNoLeap: "—",
+    calZhangSummary: (y, l, d) => `${y}年 · 理论置闰${l}次 · 合计 ${d} 天`,
+    calZhangSimulated: (l) => `本次模拟: ${l}次 (历元效应)`,
+    calZhangError: (p) => `章法精度: ${p}%`,
+    calTermLabel: (j) => `节气 ${j}`,
+    calTermDays: "天",
+    calTiZ: (Ti, Z) => `Tᵢ = ${Ti} 天  ·  Z = ${Z} 天`,
   },
   en: {
     title: "Huaxia Calendar · Universal Planetary Formula · Custom Calculator",
@@ -184,6 +195,17 @@ const L = {
     rCalType: "Calendar Type",
     rGreg: "Gregorian Compatibility",
     rFooter: "Framework: Jia Runzhang, Huaxia Calendar (2026) · §4 Universal Planetary Formula",
+    calendarShow: "▼ Calendar",
+    calendarHide: "▲ Calendar",
+    calYearLabel: "Year", calMonthsLabel: "Months", calLeapLabel: "Intercalary", calDaysLabel: "Days",
+    calLeapMark: (n) => `+M${n}`,
+    calNoLeap: "—",
+    calZhangSummary: (y, l, d) => `${y} yrs · theoretical ${l} intercalary · ${d} days total`,
+    calZhangSimulated: (l) => `Simulated: ${l} (epoch effect)`,
+    calZhangError: (p) => `Zhang accuracy: ${p}%`,
+    calTermLabel: (j) => `Term ${j}`,
+    calTermDays: "days",
+    calTiZ: (Ti, Z) => `Tᵢ = ${Ti} d  ·  Z = ${Z} d`,
   },
 };
 
@@ -363,14 +385,118 @@ function buildReport(state, r, t, lang) {
   return lines.join("\n");
 }
 
+// ── CALENDAR ENGINE ──
+// Time within year [0, Y1) to reach k-th solar term out of N (k=0..N; k=N → Y1)
+function keplerTermTime(k, N, ecc, Y1) {
+  const yr = Math.floor(k / N);
+  const kMod = k % N;
+  if (kMod === 0) return yr * Y1;
+  const theta = (2 * Math.PI / N) * kMod;
+  const factor = Math.sqrt((1 - ecc) / (1 + ecc));
+  let E = 2 * Math.atan(factor * Math.tan(theta / 2));
+  if (E < 0) E += 2 * Math.PI;
+  const M = E - ecc * Math.sin(E);
+  return yr * Y1 + (M / (2 * Math.PI)) * Y1;
+}
+
+function generateCalendar(state, r, numYears = 19) {
+  const { Y1, ecc, N } = state;
+  const Z = r.Z;
+  if (N < 2 || Y1 <= 0) return { type: "solar", terms: [], Y1, N, ecc };
+
+  if (r.modeA.length === 0) {
+    // N solar terms per year; each spans Y1/N days (= Z/2, not Z)
+    const termLen = Y1 / N;
+    const terms = [];
+    let cum = 0;
+    for (let j = 1; j <= N; j++) {
+      const t1 = ecc < 0.005 ? (j - 1) * termLen : keplerTermTime(j - 1, N, ecc, Y1);
+      const t2 = ecc < 0.005 ? j * termLen : keplerTermTime(j, N, ecc, Y1);
+      const len = t2 - t1;
+      cum += len;
+      terms.push({ j, start: t1, length: len, cumulative: cum });
+    }
+    return { type: "solar", terms, Y1, N, ecc };
+  }
+
+  const Ti = r.modeA[0].Ti;
+  if (Ti <= 0) return { type: "solar", terms: [], Y1, N, ecc };
+
+  // Zhongqi: N/2 per year, interval Z = 2Y₁/N
+  // Global j-th Zhongqi is at j*Z (mean), or Keplerian: yr*Y₁ + keplerTermTime(2*(j%halfN), N, ecc, Y₁)
+  const halfN = Math.round(N / 2);
+  const totalZQ = (numYears + 2) * halfN;
+  const zqTimes = [];
+  for (let j = 0; j <= totalZQ; j++) {
+    if (ecc < 0.005) {
+      zqTimes.push(j * Z);
+    } else {
+      const yr = Math.floor(j / halfN);
+      const k = j % halfN;
+      zqTimes.push(yr * Y1 + keplerTermTime(2 * k, N, ecc, Y1));
+    }
+  }
+
+  // Generate month sequence with pointer sweep (O(n+m))
+  const totalMonths = Math.ceil((numYears + 2) * Y1 / Ti) + 5;
+  const allMonths = [];
+  let zqCursor = 0;
+  for (let k = 1; k <= totalMonths; k++) {
+    const start = (k - 1) * Ti;
+    const end = k * Ti;
+    const length = Math.round(k * Ti) - Math.round((k - 1) * Ti);
+    while (zqCursor < zqTimes.length && zqTimes[zqCursor] < start) zqCursor++;
+    let zqCount = 0, tmp = zqCursor;
+    while (tmp < zqTimes.length && zqTimes[tmp] < end) { zqCount++; tmp++; }
+    allMonths.push({ k, start, length, zqCount, isIntercalary: zqCount === 0 });
+    if (start > (numYears + 1) * Y1) break;
+  }
+
+  // Group by counting N/2 Zhongqi per calendar year (correct lunisolar year boundary)
+  const years = [];
+  let yearMonths = [];
+  let zqInYear = 0;
+  for (const m of allMonths) {
+    yearMonths.push(m);
+    zqInYear += m.zqCount;
+    if (zqInYear >= halfN) {
+      let regNum = 0, prevReg = 0;
+      const labeled = yearMonths.map(mo => {
+        if (!mo.isIntercalary) { regNum++; prevReg = regNum; return { ...mo, num: regNum }; }
+        return { ...mo, leapAfter: prevReg };
+      });
+      const totalDays = labeled.reduce((s, mo) => s + mo.length, 0);
+      const leapMs = labeled.filter(mo => mo.isIntercalary);
+      years.push({ y: years.length + 1, months: labeled, totalDays, hasLeap: leapMs.length > 0, leapAfter: leapMs[0]?.leapAfter ?? null });
+      yearMonths = [];
+      zqInYear = 0;
+      if (years.length >= numYears) break;
+    }
+  }
+
+  const totalLeap = years.filter(y => y.hasLeap).length;
+  const totalDaysSum = years.reduce((s, y) => s + y.totalDays, 0);
+  const expectedDays = Math.round(numYears * Y1);
+  // Theoretical intercalary count from Y₁/Tᵢ ratio (epoch-independent)
+  const frac = (Y1 / Ti) - Math.floor(Y1 / Ti);
+  const theoreticalLeap = Math.round(numYears * frac);
+  const zhangQuality = theoreticalLeap > 0
+    ? (Math.abs(frac - theoreticalLeap / numYears) / (theoreticalLeap / numYears) * 100).toFixed(4)
+    : "N/A";
+
+  return { type: "lunisolar", years, totalLeap, theoreticalLeap, zhangQuality, numYears, Ti, Z, Y1, totalDaysSum, expectedDays };
+}
+
 // ── MAIN ──
 export default function CustomCalculator({ lang }) {
   const [state, setState] = useState({ ...PRESETS.earth });
   const [showReport, setShowReport] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showCal, setShowCal] = useState(false);
   const t = L[lang];
   const r = compute(state);
   const reportText = showReport ? buildReport(state, r, t, lang) : "";
+  const cal = generateCalendar(state, r);
 
   const set = useCallback((key, val) => setState(prev => ({ ...prev, [key]: val })), []);
 
@@ -652,6 +778,103 @@ export default function CustomCalculator({ lang }) {
               background: "var(--cell)", borderRadius: 10, padding: "16px 20px",
               overflowX: "auto",
             }}>{reportText}</pre>
+          </div>
+        )}
+
+        {/* Calendar Table */}
+        <div style={{ marginTop: 14, textAlign: "center" }}>
+          <button onClick={() => setShowCal(v => !v)} style={{
+            background: showCal ? "var(--green)" : "var(--card)",
+            color: showCal ? "#090b10" : "var(--green)",
+            border: "1px solid var(--green)", borderRadius: 10,
+            padding: "10px 28px", cursor: "pointer", fontFamily: "var(--body)",
+            fontSize: 14, fontWeight: 700, letterSpacing: 1, transition: "all 0.15s",
+          }}>
+            {showCal ? t.calendarHide : t.calendarShow}
+          </button>
+        </div>
+
+        {showCal && (
+          <div style={{ marginTop: 16, background: "var(--card)", border: "1px solid #10b98140", borderRadius: 14, padding: "20px 24px" }}>
+            {cal.type === "lunisolar" ? (
+              <div>
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, color: "var(--green)", fontFamily: "var(--mono)", letterSpacing: 1, textTransform: "uppercase" }}>
+                    {lang === "zh" ? `华夏历法 · ${cal.numYears}年章法` : `Huaxia Calendar · ${cal.numYears}-Year Zhang Cycle`}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 4 }}>
+                    {t.calTiZ(cal.Ti.toFixed(4), cal.Z.toFixed(4))}
+                  </div>
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ borderCollapse: "collapse", width: "100%", fontFamily: "var(--mono)", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        {[t.calYearLabel, t.calMonthsLabel, t.calLeapLabel, t.calDaysLabel].map((h, i) => (
+                          <th key={i} style={{ padding: "6px 12px", textAlign: "left", color: "var(--dim)", fontWeight: 400, fontSize: 11, minWidth: 60 }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cal.years.map(y => (
+                        <tr key={y.y} style={{ borderBottom: "1px solid #ffffff08", background: y.hasLeap ? "#10b98108" : "transparent" }}>
+                          <td style={{ padding: "4px 12px", color: "var(--dim2)" }}>{y.y}</td>
+                          <td style={{ padding: "4px 12px", fontWeight: y.hasLeap ? 600 : 400, color: y.hasLeap ? "var(--green)" : "var(--fg)" }}>{y.months.length}</td>
+                          <td style={{ padding: "4px 12px", color: y.hasLeap ? "var(--green)" : "var(--dim)", fontWeight: y.hasLeap ? 600 : 400 }}>
+                            {y.hasLeap ? t.calLeapMark(y.leapAfter) : t.calNoLeap}
+                          </td>
+                          <td style={{ padding: "4px 12px" }}>{y.totalDays}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ marginTop: 14, padding: "10px 14px", background: "var(--cell)", borderRadius: 8, fontFamily: "var(--mono)", fontSize: 12, lineHeight: 1.9 }}>
+                  <div style={{ color: "var(--dim2)" }}>{t.calZhangSummary(cal.numYears, cal.theoreticalLeap, cal.totalDaysSum)}</div>
+                  {cal.totalLeap !== cal.theoreticalLeap && (
+                    <div style={{ color: "var(--orange)", fontSize: 11 }}>{t.calZhangSimulated(cal.totalLeap)}</div>
+                  )}
+                  <div style={{ color: parseFloat(cal.zhangQuality) < 0.01 ? "var(--green)" : "var(--dim2)" }}>
+                    {t.calZhangError(cal.zhangQuality)}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, color: "var(--accent)", fontFamily: "var(--mono)", letterSpacing: 1, textTransform: "uppercase" }}>
+                    {lang === "zh" ? `太阳历节气表 · N=${cal.N}` : `Solar Terms · N=${cal.N}`}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 4 }}>
+                    {`Y₁ = ${cal.Y1.toFixed(2)} ${t.days}`}
+                    {cal.ecc > 0.05 && <span style={{ color: "var(--orange)", marginLeft: 8 }}>{lang === "zh" ? "· 开普勒效应已激活" : "· Keplerian active"}</span>}
+                  </div>
+                </div>
+                {cal.terms.length === 0 ? (
+                  <div style={{ color: "var(--dim)", fontFamily: "var(--mono)", fontSize: 12 }}>—</div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 5 }}>
+                    {cal.terms.map(term => (
+                      <div key={term.j} style={{
+                        background: "var(--cell)", borderRadius: 6, padding: "7px 9px",
+                        borderLeft: `3px solid ${term.length < r.Z - 0.01 ? "#3b82f6" : term.length > r.Z + 0.01 ? "#f59e0b" : "#10b981"}`,
+                      }}>
+                        <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)" }}>{t.calTermLabel(term.j)}</div>
+                        <div style={{ fontSize: 12, fontWeight: 600 }}>{term.length.toFixed(2)}</div>
+                        <div style={{ fontSize: 10, color: "var(--dim2)" }}>{t.calTermDays}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {state.ecc > 0.05 && (
+                  <div style={{ marginTop: 12, fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", lineHeight: 1.6 }}>
+                    {lang === "zh"
+                      ? `蓝 < Z=${r.Z.toFixed(2)}天（近日点快速节气）· 黄 > Z（远日点慢速节气）`
+                      : `Blue < Z=${r.Z.toFixed(2)}d (fast, near perihelion) · Yellow > Z (slow, near aphelion)`}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
