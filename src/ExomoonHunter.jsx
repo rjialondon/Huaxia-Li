@@ -34,6 +34,8 @@ const T = {
     leapFreq: "置闰频率 ≈ 每",
     years: "年",
     localYears: "本地年",
+    leapDayTitle: "宿主行星岁余",
+    leapDayCycle: (p, q) => `每 ${q} 年插 ${p} 个闰日`,
     zhangVerify: (p, q) => `最优章法 (${p}/${q}) =`,
     error: "误差",
     conclusionTitle: "发现",
@@ -87,6 +89,8 @@ const T = {
     leapFreq: "Intercalary frequency ≈ every",
     years: "years",
     localYears: "local years",
+    leapDayTitle: "Host Planet Day Surplus",
+    leapDayCycle: (p, q) => `${p} leap day(s) per ${q} years`,
     zhangVerify: (p, q) => `Best Zhang Period (${p}/${q}) =`,
     error: "error",
     conclusionTitle: "Findings",
@@ -217,7 +221,13 @@ function analyzeCandidate(c) {
   // Ideal is Ti/Z close to 1 (like Earth's Moon at 97%)
   const idealness = ratioZ;
 
-  return { Z, lo, hi, inModeA, tooFast, belowDay, ratioZ, rangeOverlapsA, idealness };
+  // 岁余：宿主行星本地日的余分 → 置闰日周期
+  const daysPerYear = c.localDay > 0 ? c.Y1 / (c.localDay / 24) : null;
+  const fracDay = daysPerYear !== null ? daysPerYear - Math.floor(daysPerYear) : null;
+  const leapDay = (fracDay !== null && fracDay > 0.002 && fracDay < 0.998)
+    ? { ...bestRational(fracDay), daysPerYear } : null;
+
+  return { Z, lo, hi, inModeA, tooFast, belowDay, ratioZ, rangeOverlapsA, idealness, leapDay };
 }
 
 function Gauge({ value, lo, hi, max, label }) {
@@ -369,6 +379,15 @@ function CandidateCard({ c, t, lang }) {
               );
             })()}
           </div>
+        </div>
+      )}
+
+      {/* 岁余 */}
+      {a.leapDay && (
+        <div style={{ background: "var(--cell)", borderRadius: 8, padding: "8px 14px", marginTop: 10, fontFamily: "var(--mono)", fontSize: 12 }}>
+          <span style={{ color: "#f59e0b", fontWeight: 600 }}>{t.leapDayTitle}：</span>
+          <span style={{ color: "var(--dim2)" }}>{a.leapDay.p}/{a.leapDay.q} → </span>
+          <span style={{ color: "var(--fg)" }}>{t.leapDayCycle(a.leapDay.p, a.leapDay.q)}</span>
         </div>
       )}
 

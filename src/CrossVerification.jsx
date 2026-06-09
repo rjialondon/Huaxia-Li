@@ -36,6 +36,10 @@ const T = {
     intercalaryFreq: "置闰频率",
     perYear: "年",
     perLocalYear: "本地年",
+    leapDayTitle: "岁余 · 置闰日",
+    leapDayPerYear: "年长（本地日）",
+    leapDayFrac: "岁余",
+    leapDayCycle: (p, q) => `每 ${q} 年插 ${p} 个闰日`,
     zhangVerify: (p, q) => `最优章法 (${p}/${q})：`,
     error: "误差",
     keplerEffect: "开普勒效应",
@@ -112,6 +116,10 @@ const T = {
     intercalaryFreq: "Intercalary frequency",
     perYear: "years",
     perLocalYear: "local years",
+    leapDayTitle: "Day Surplus · Leap Day (岁余)",
+    leapDayPerYear: "Year (local days)",
+    leapDayFrac: "Day surplus (岁余)",
+    leapDayCycle: (p, q) => `${p} leap day(s) per ${q} years`,
     zhangVerify: (p, q) => `Best Zhang Period (${p}/${q}):`,
     error: "Error",
     keplerEffect: "Keplerian Effect",
@@ -349,7 +357,15 @@ function analyze(sys, lang) {
   else formulaOutput = { type: t.solarPlus(modeB.length), icon: "→", color: "#3b82f6" };
 
   const gregWorks = sys.m === 1 && sys.satellites.length === 1 && modeA.length === 1 && !isLocked;
-  return { Z, lo, hi, sats, modeA, modeB, intercalary, formulaOutput, gregWorks, shichen, shichenValid, isLocked, dayExceedsYear };
+
+  // 岁余（三余之一）：同《四分历》「岁余四分之一」逻辑，适用任意行星
+  const daysPerYear = (!isLocked && !dayExceedsYear && sys.localDay > 0)
+    ? sys.Y1 / (sys.localDay / 24) : null;
+  const fracDay = daysPerYear !== null ? daysPerYear - Math.floor(daysPerYear) : null;
+  const leapDay = (fracDay !== null && fracDay > 0.002 && fracDay < 0.998)
+    ? { ...bestRational(fracDay), daysPerYear } : null;
+
+  return { Z, lo, hi, sats, modeA, modeB, intercalary, formulaOutput, gregWorks, shichen, shichenValid, isLocked, dayExceedsYear, leapDay };
 }
 
 // ── UI ──
@@ -468,6 +484,18 @@ function Detail({ sys, lang }) {
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* 岁余·置闰日 */}
+      {a.leapDay && (
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px" }}>
+          <div style={{ fontSize: 12, color: "#f59e0b", fontFamily: "var(--mono)", letterSpacing: 1, marginBottom: 12, textTransform: "uppercase" }}>{t.leapDayTitle}</div>
+          <div style={{ fontSize: 13, fontFamily: "var(--mono)", lineHeight: 2, color: "var(--fg)" }}>
+            <div>{t.leapDayPerYear} = {Math.floor(a.leapDay.daysPerYear)} + {(a.leapDay.daysPerYear - Math.floor(a.leapDay.daysPerYear)).toFixed(4)}</div>
+            <div>{t.leapDayFrac} = {(a.leapDay.daysPerYear - Math.floor(a.leapDay.daysPerYear)).toFixed(4)} → {a.leapDay.p}/{a.leapDay.q}</div>
+            <div style={{ color: "#f59e0b", fontWeight: 600 }}>{t.leapDayCycle(a.leapDay.p, a.leapDay.q)}</div>
           </div>
         </div>
       )}
