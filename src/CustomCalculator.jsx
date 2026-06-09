@@ -630,6 +630,11 @@ export default function CustomCalculator({ lang }) {
               <InputRow label={t.localDay}><NumInput value={state.localDay} onChange={v => set("localDay", v)} min={0.1} /></InputRow>
               <InputRow label={t.ecc}><NumInput value={state.ecc} onChange={v => set("ecc", v)} min={0} max={0.99} step={0.01} /></InputRow>
               <InputRow label={t.solarTerms}><NumInput value={state.N} onChange={v => set("N", v)} min={2} max={360} step={1} /></InputRow>
+              <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)", paddingLeft: 190, marginTop: -4, marginBottom: 8 }}>
+                {state.sats.length === 0
+                  ? (lang === "zh" ? "当前：约定值（无卫星，默认 24）" : "current: convention (no satellite, default 24)")
+                  : (lang === "zh" ? "当前：可从 Y₁/Tᵢ 推导（有卫星）" : "current: derivable from Y₁/Tᵢ (satellite present)")}
+              </div>
               <InputRow label={t.locked}>
                 <div style={{ display: "flex", gap: 8 }}>
                   {[true, false].map(v => (

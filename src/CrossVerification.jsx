@@ -417,7 +417,11 @@ function Detail({ sys, lang }) {
           <Cell label={t.localDay} value={sys.localDay < 48 ? `${sys.localDay.toFixed(2)} ${t.hours}` : `${(sys.localDay/24).toFixed(1)} ${t.days}`} />
           <Cell label={t.shichen} value={a.shichenValid ? `${a.shichen.toFixed(2)} ${t.hours}` : a.isLocked ? t.undefinedLocked : t.degenerate} />
           {sys.m >= 2 && sys.binaryPeriod && <Cell label={t.binaryPeriod} value={`${sys.binaryPeriod.toFixed(2)} ${t.days}`} sub={t.overlaySource} />}
-          <Cell label="N" value={sys.N} sub={lang === "zh" ? "节气分段 (设计参数)" : "solar term div. (design choice)"} />
+          <Cell label="N" value={sys.N} sub={
+            a.modeA.length > 0
+              ? (lang === "zh" ? "推导自 Y₁/Tᵢ" : "derived from Y₁/Tᵢ")
+              : (lang === "zh" ? "约定 (无甲型卫星)" : "convention (no Mode A sat.)")
+          } />
         </div>
       </div>
 

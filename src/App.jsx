@@ -15,6 +15,7 @@ const NAV = {
     heroFormula: "Universal Planetary Formula",
     heroDesc: "一个从中国古代历法中提取的数学框架，用同一套结构处理任意行星系统的计时问题。",
     heroDesc2: "以下三个交互工具使用真实天文数据验证公式的通用性。",
+    heroPrinciple: "设计原则：参数优先从天文结构推导；天文结构缺位时，走约定。公式本身不含任何地球专属常数。",
     card1Title: "跨星系交叉验证",
     card1Desc: "10个真实天文系统 — 从地球到环双星行星，从6天超短年到7170年超长周期。代入公式，全部有定义输出。公历仅在地球参数下可工作。",
     card2Title: "甲型系外卫星猎手",
@@ -41,6 +42,7 @@ const NAV = {
     heroFormula: "Huaxia Calendar",
     heroDesc: "A mathematical framework extracted from the ancient Chinese calendar, capable of handling timekeeping for any planetary system with a single unified structure.",
     heroDesc2: "Three interactive tools below verify the formula's universality using real astronomical data.",
+    heroPrinciple: "Design principle: parameters are first derived from celestial structure; convention fills in only where nature provides no answer. The formula contains no Earth-specific constants.",
     card1Title: "Cross-System Verification",
     card1Desc: "10 real astronomical systems — from Earth to circumbinary planets, from 6-day ultra-short years to 7,170-year ultra-long periods. All produce defined output. Gregorian works only for Earth.",
     card2Title: "Mode A Exomoon Hunter",
@@ -115,6 +117,7 @@ function HomePage({ lang, onNavigate }) {
           </div>
           <div className="hero-desc">{t.heroDesc}</div>
           <div className="hero-desc2">{t.heroDesc2}</div>
+          <div style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 10, lineHeight: 1.6, letterSpacing: 0.3, borderLeft: "2px solid var(--border)", paddingLeft: 10 }}>{t.heroPrinciple}</div>
         </div>
       </div>
 
