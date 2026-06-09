@@ -111,6 +111,9 @@ const L = {
     calTermDays: "本地日",
     calTiZ: (Ti, Z) => `Tᵢ = ${Ti} 本地日  ·  Z = ${Z} 本地日`,
     localDayConv: (ed, sh) => `1 本地日 = ${ed} 地球日 · 1 时辰 = ${sh} 小时`,
+    solarCycleTitle: (n) => `岁余 · ${n}年置闰周期`,
+    solarLeapDay: "+1日",
+    solarYearSummary: (y, l, d) => `${y}年 · 置闰${l}次 · 合计 ${d} 本地日`,
   },
   en: {
     title: "Huaxia Calendar · Universal Planetary Formula · Custom Calculator",
@@ -218,6 +221,9 @@ const L = {
     calTermDays: "local d",
     calTiZ: (Ti, Z) => `Tᵢ = ${Ti} local d  ·  Z = ${Z} local d`,
     localDayConv: (ed, sh) => `1 local day = ${ed} Earth days · 1 shichen = ${sh} h`,
+    solarCycleTitle: (n) => `Day Surplus · ${n}-Year Leap Cycle`,
+    solarLeapDay: "+1 d",
+    solarYearSummary: (y, l, d) => `${y} yrs · ${l} leap insertions · ${d} local days total`,
   },
 };
 
@@ -481,7 +487,23 @@ function generateCalendar(state, r) {
       cum += len;
       terms.push({ j, start: t1, length: len, cumulative: cum });
     }
-    return { type: "solar", terms, Y1, N, ecc, localDay, Z_local: Z };
+    // 岁余年表：同朔余算法，Y₁ 非整数 → round(k·Y₁)−round((k−1)·Y₁) → 大/小年交替
+    // 出处：《四分历》岁余四分之一；地球=4年1闰，火星≈5年3闰，各星自推
+    const fracDay = Y1 - Math.floor(Y1);
+    let solarYears = null;
+    if (fracDay > 0.002 && fracDay < 0.998) {
+      const numYrs = Math.min(bestRational(fracDay, 100).q, 60);
+      const baseYear = Math.floor(Y1);
+      const yrs = [];
+      for (let k = 1; k <= numYrs; k++) {
+        const days = Math.round(k * Y1) - Math.round((k - 1) * Y1);
+        yrs.push({ y: k, days, isLeap: days > baseYear });
+      }
+      const leapCount = yrs.filter(y => y.isLeap).length;
+      const totalDays = yrs.reduce((s, y) => s + y.days, 0);
+      solarYears = { years: yrs, numYears: numYrs, leapCount, totalDays };
+    }
+    return { type: "solar", terms, Y1, N, ecc, localDay, Z_local: Z, solarYears };
   }
 
   const Ti = r.modeA[0].Ti;
@@ -969,6 +991,40 @@ export default function CustomCalculator({ lang }) {
                     {lang === "zh"
                       ? `蓝 < 均值 ${r.lo.toFixed(2)} 本地日（近日点快速）· 黄 > 均值（远日点慢速）`
                       : `Blue < mean ${r.lo.toFixed(2)} local d (fast, perihelion) · Yellow > mean (slow, aphelion)`}
+                  </div>
+                )}
+
+                {/* 岁余年表 — 通用置闰日周期 */}
+                {cal.solarYears && (
+                  <div style={{ marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+                    <div style={{ fontSize: 12, color: "var(--accent)", fontFamily: "var(--mono)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
+                      {t.solarCycleTitle(cal.solarYears.numYears)}
+                    </div>
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ borderCollapse: "collapse", width: "100%", fontFamily: "var(--mono)", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            {[t.calYearLabel, t.calDaysLabel, t.calLeapLabel].map((h, i) => (
+                              <th key={i} style={{ padding: "6px 12px", textAlign: "left", color: "var(--dim)", fontWeight: 400, fontSize: 11, minWidth: 60 }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cal.solarYears.years.map(y => (
+                            <tr key={y.y} style={{ borderBottom: "1px solid #ffffff08", background: y.isLeap ? "#d4a84308" : "transparent" }}>
+                              <td style={{ padding: "4px 12px", color: "var(--dim2)" }}>{y.y}</td>
+                              <td style={{ padding: "4px 12px", fontWeight: y.isLeap ? 600 : 400, color: y.isLeap ? "var(--accent)" : "var(--fg)" }}>{y.days}</td>
+                              <td style={{ padding: "4px 12px", color: y.isLeap ? "var(--accent)" : "var(--dim)", fontWeight: y.isLeap ? 600 : 400 }}>
+                                {y.isLeap ? t.solarLeapDay : t.calNoLeap}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div style={{ marginTop: 10, padding: "8px 12px", background: "var(--cell)", borderRadius: 8, fontFamily: "var(--mono)", fontSize: 11, color: "var(--dim2)" }}>
+                      {t.solarYearSummary(cal.solarYears.numYears, cal.solarYears.leapCount, cal.solarYears.totalDays)}
+                    </div>
                   </div>
                 )}
               </div>
