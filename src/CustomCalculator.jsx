@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 // ── i18n ──
 const L = {
@@ -73,6 +73,27 @@ const L = {
     binaryPeriod: "双星互绕周期 (地球日)",
     tip: "提示：修改任何参数，右侧结果实时更新。试试改变卫星周期看它如何在甲/乙型之间跳转！",
     tipEn: "Tip: Change any parameter and results update in real time. Try adjusting satellite period to see it jump between Mode A and B!",
+    generateReport: "生成报告",
+    copyReport: "复制文本",
+    copied: "已复制 ✓",
+    reportTitle: "行星历法分析报告",
+    reportSubtitle: "基于华夏历通用行星公式",
+    rBasic: "基本参数",
+    rDerived: "推导参数",
+    rStars: "恒星层",
+    rSats: "卫星分类",
+    rNoSat: "无卫星 (n=0)",
+    rIntercalary: "置闰预测",
+    rIntMonth: "整数月数",
+    rFrac: "年余分",
+    rFreq: "置闰频率 ≈ 每",
+    rLocalYr: "本地年一次",
+    rZhang: "章法验证（19年7闰）误差",
+    rOverlays: "乙型叠合体",
+    rOutput: "公式输出",
+    rCalType: "历法类型",
+    rGreg: "公历兼容性",
+    rFooter: "分析框架：贾润章《华夏历》2026 · §4 通用行星公式",
   },
   en: {
     title: "Huaxia Calendar · Universal Planetary Formula · Custom Calculator",
@@ -142,6 +163,27 @@ const L = {
     addOverlay: "+ Add Overlay",
     binaryPeriod: "Binary Mutual Orbit (Earth days)",
     tip: "Tip: Change any parameter and results update in real time. Try adjusting satellite period to see it jump between Mode A and B!",
+    generateReport: "Generate Report",
+    copyReport: "Copy Text",
+    copied: "Copied ✓",
+    reportTitle: "Planetary Calendar Report",
+    reportSubtitle: "Based on the Huaxia Calendar Universal Planetary Formula",
+    rBasic: "Basic Parameters",
+    rDerived: "Derived Parameters",
+    rStars: "Stellar Layer",
+    rSats: "Satellite Classification",
+    rNoSat: "No satellites (n=0)",
+    rIntercalary: "Intercalary Prediction",
+    rIntMonth: "Integer months",
+    rFrac: "Annual fraction",
+    rFreq: "Intercalary frequency ≈ every",
+    rLocalYr: "local years",
+    rZhang: "Zhang Rule (19yr/7leap) error",
+    rOverlays: "Mode B Overlays",
+    rOutput: "Formula Output",
+    rCalType: "Calendar Type",
+    rGreg: "Gregorian Compatibility",
+    rFooter: "Framework: Jia Runzhang, Huaxia Calendar (2026) · §4 Universal Planetary Formula",
   },
 };
 
@@ -254,11 +296,81 @@ function compute(state) {
   return { Z, lo, hi, shichen, shichenValid, classified, modeA, modeB, intercalary, gregWorks, dayExceedsYear };
 }
 
+// ── REPORT GENERATOR ──
+function buildReport(state, r, t, lang) {
+  const zh = lang === "zh";
+  const d = zh ? "天" : "days";
+  const hr = zh ? "小时" : "hours";
+  const sep = "─".repeat(52);
+  const lines = [
+    sep,
+    `  ${t.reportTitle}`,
+    `  ${t.reportSubtitle}`,
+    `  Cp = ΦA(Θ₁,{Ψ∈A}) ⊕ ΦB(Θ₁…Θm,{Ψ∈B})`,
+    sep,
+    "",
+    `【${t.rBasic}】`,
+    `  Y₁ (${zh ? "行星年" : "Planet Year"}): ${state.Y1} ${d}`,
+    `  ${zh ? "本地日" : "Local Day"}: ${state.localDay} ${hr}`,
+    `  e (${zh ? "离心率" : "Eccentricity"}): ${state.ecc}`,
+    `  N (${zh ? "节气分段" : "Solar Term Div."}): ${state.N}`,
+    ...(state.locked ? [`  ⚠ ${zh ? "潮汐锁定" : "Tidally Locked"}`] : []),
+    "",
+    `【${t.rDerived}】`,
+    `  Z (${zh ? "中气间隔" : "Zhongqi Interval"}): ${r.Z.toFixed(4)} ${d}`,
+    `  ${zh ? "甲型范围" : "Mode A Range"}: [${r.lo.toFixed(2)}, ${r.hi.toFixed(2)}) ${d}`,
+    ...(r.shichenValid ? [`  ${zh ? "时辰" : "Shichen"}: ${r.shichen.toFixed(2)} ${hr}`] : []),
+    "",
+    `【${t.rStars}】 m=${state.stars.length}`,
+    ...state.stars.map((s, i) => `  Θ${i + 1}: ${s.name} (${s.mass} M☉)`),
+    ...(state.binaryPeriod > 0 ? [`  ${zh ? "双星周期" : "Binary Period"}: ${state.binaryPeriod} ${d}`] : []),
+    "",
+    `【${t.rSats}】 n=${state.sats.length}`,
+    ...(state.sats.length === 0
+      ? [`  ${t.rNoSat}`]
+      : r.classified.map(s => {
+          const tag = s.mode === "A" ? (zh ? "甲型 ✓" : "Mode A ✓") : s.mode === "B" ? (zh ? "乙型" : "Mode B") : (zh ? "排除" : "Excluded");
+          return `  ${s.name}: Tᵢ=${s.Ti} ${d} → ${tag}  (Tᵢ/Z=${(s.ratioZ * 100).toFixed(1)}%)`;
+        })),
+    "",
+    ...(r.intercalary ? [
+      `【${t.rIntercalary}】`,
+      `  Y₁/Tᵢ = ${r.intercalary.monthsPerYear.toFixed(4)} ${zh ? "月/年" : "months/yr"}`,
+      `  ${t.rIntMonth} = ${Math.floor(r.intercalary.monthsPerYear)}`,
+      `  ${t.rFrac} = ${r.intercalary.fraction.toFixed(5)}`,
+      `  ${t.rFreq} ${r.intercalary.interval.toFixed(2)} ${t.rLocalYr}`,
+      ...(Math.abs(r.intercalary.fraction - 7 / 19) < 0.02
+        ? [`  ${t.rZhang}: ${(Math.abs(7 / 19 - r.intercalary.fraction) / r.intercalary.fraction * 100).toFixed(3)}%`]
+        : []),
+      "",
+    ] : []),
+    ...((state.overlays || []).length > 0 ? [
+      `【${t.rOverlays}】`,
+      ...(state.overlays || []).map(o => `  ${o.name}: ${o.period} ${zh ? "本地年/周期" : "local yrs/cycle"}`),
+      "",
+    ] : []),
+    `【${t.rOutput}】`,
+    `  ΦA: ${r.modeA.length > 0 ? r.modeA.map(s => s.name).join(", ") + " ✓" : (zh ? "空集 ∅" : "∅ empty")}`,
+    `  ΦB: ${[...r.modeB.map(s => s.name), ...(state.overlays || []).map(o => o.name)].join(", ") || (zh ? "空集 ∅" : "∅ empty")}`,
+    "",
+    `  ${t.rCalType}: ${r.modeA.length > 0 ? (zh ? "阴阳合历" : "Lunisolar Calendar") : state.sats.length === 0 ? (zh ? "纯太阳历 (n=0)" : "Pure Solar (n=0)") : (zh ? `太阳历 + ${r.modeB.length}条乙型计数轨` : `Solar + ${r.modeB.length} Mode B tracks`)}`,
+    `  ${t.rGreg}: ${r.gregWorks ? (zh ? "可工作 ✓" : "Works ✓") : (zh ? "结构崩溃 ✗" : "Structural collapse ✗")}`,
+    "",
+    sep,
+    `  ${t.rFooter}`,
+    sep,
+  ];
+  return lines.join("\n");
+}
+
 // ── MAIN ──
 export default function CustomCalculator({ lang }) {
   const [state, setState] = useState({ ...PRESETS.earth });
+  const [showReport, setShowReport] = useState(false);
+  const [copied, setCopied] = useState(false);
   const t = L[lang];
   const r = compute(state);
+  const reportText = showReport ? buildReport(state, r, t, lang) : "";
 
   const set = useCallback((key, val) => setState(prev => ({ ...prev, [key]: val })), []);
 
@@ -500,6 +612,49 @@ export default function CustomCalculator({ lang }) {
             </div>
           </div>
         </div>
+
+        {/* Generate Report */}
+        <div style={{ marginTop: 20, textAlign: "center" }}>
+          <button onClick={() => { setShowReport(v => !v); setCopied(false); }} style={{
+            background: showReport ? "var(--accent)" : "var(--card)",
+            color: showReport ? "#090b10" : "var(--accent)",
+            border: "1px solid var(--accent)", borderRadius: 10,
+            padding: "10px 28px", cursor: "pointer", fontFamily: "var(--body)",
+            fontSize: 14, fontWeight: 700, letterSpacing: 1,
+            transition: "all 0.15s",
+          }}>
+            {showReport ? "▲ " : "▼ "}{t.generateReport}
+          </button>
+        </div>
+
+        {showReport && (
+          <div style={{ marginTop: 16, background: "var(--card)", border: "1px solid var(--accent)40", borderRadius: 14, padding: "20px 24px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: "var(--accent)", fontFamily: "var(--mono)", letterSpacing: 1, textTransform: "uppercase" }}>{t.reportTitle}</div>
+              <button onClick={() => {
+                navigator.clipboard.writeText(reportText).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                });
+              }} style={{
+                background: copied ? "#10b98120" : "var(--cell)",
+                color: copied ? "#10b981" : "var(--dim2)",
+                border: `1px solid ${copied ? "#10b981" : "var(--border)"}`,
+                borderRadius: 8, padding: "5px 14px", cursor: "pointer",
+                fontFamily: "var(--mono)", fontSize: 12, transition: "all 0.2s",
+              }}>
+                {copied ? t.copied : t.copyReport}
+              </button>
+            </div>
+            <pre style={{
+              fontFamily: "var(--mono)", fontSize: 12, color: "var(--fg)",
+              lineHeight: 1.8, whiteSpace: "pre-wrap", margin: 0,
+              background: "var(--cell)", borderRadius: 10, padding: "16px 20px",
+              overflowX: "auto",
+            }}>{reportText}</pre>
+          </div>
+        )}
+
       </div>
     </div>
   );
