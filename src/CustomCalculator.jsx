@@ -13,15 +13,15 @@ const L = {
     starMass: "质量 (M☉)",
     addStar: "+ 添加伴星",
     planetConfig: "行星参数",
-    stellarYear: "恒星年 Y₁ (地球日)",
-    localDay: "本地日 (小时)",
+    stellarYear: "行星年 Y₁ (本地日)",
+    localDay: "本地日时长（小时，可选）",
     ecc: "轨道离心率 e",
     locked: "潮汐锁定",
     yes: "是", no: "否",
     solarTerms: "节气分段 N",
     satConfig: "卫星配置",
     satName: "卫星名称",
-    satPeriod: "朔望周期 Tᵢ (地球日)",
+    satPeriod: "朔望周期 Tᵢ (本地日)",
     addSat: "+ 添加卫星",
     removeSat: "删除",
     removeStar: "删除",
@@ -122,15 +122,15 @@ const L = {
     starMass: "Mass (M☉)",
     addStar: "+ Add Companion Star",
     planetConfig: "Planet Parameters",
-    stellarYear: "Stellar Year Y₁ (Earth days)",
-    localDay: "Local Day (hours)",
+    stellarYear: "Planet Year Y₁ (local days)",
+    localDay: "Local Day Length (hours, optional)",
     ecc: "Orbital Eccentricity e",
     locked: "Tidally Locked",
     yes: "Yes", no: "No",
     solarTerms: "Solar Term Divisions N",
     satConfig: "Satellite Configuration",
     satName: "Satellite Name",
-    satPeriod: "Synodic Period Tᵢ (Earth days)",
+    satPeriod: "Synodic Period Tᵢ (local days)",
     addSat: "+ Add Satellite",
     removeSat: "Remove",
     removeStar: "Remove",
@@ -241,27 +241,31 @@ function bestRational(frac, maxDenom = 100) {
 // 其他行星会从自己的 Y₁/Tᵢ 推出各自的 N，置闰结构（无中气规则、余分、p/q 章法）完全一致。
 // ⚠  慎重修改：N 牵动 Z、lo、hi、历法表全部导出量，改之前先确认意图。
 const PRESETS = {
+  // Y1 和 Tᵢ 均为本地日（行星自转次数）。localDay(小时) 仅作地球换算桥，可选。
   earth: {
     stars: [{ name: "Sun", mass: 1.0 }],
     Y1: 365.25, localDay: 24, ecc: 0.0167, locked: false, N: 24,
-    sats: [{ name: "Moon", Ti: 29.5306 }],
+    sats: [{ name: "Moon", Ti: 29.5306 }],  // 地球本地日=1地球日，数值不变
     overlays: [{ name: "Jupiter (岁星)", period: 11.862 }],
     binaryPeriod: 0,
   },
   mars: {
     stars: [{ name: "Sun", mass: 1.0 }],
-    Y1: 686.97, localDay: 24.66, ecc: 0.0934, locked: false, N: 24,
-    sats: [{ name: "Phobos", Ti: 0.319 }, { name: "Deimos", Ti: 1.26 }],
+    // 1 火星日 = 24.66h = 1.0275 地球日；火星年 686.97÷1.0275 = 668.60 火星日
+    Y1: 668.60, localDay: 24.66, ecc: 0.0934, locked: false, N: 24,
+    sats: [{ name: "Phobos", Ti: 0.3105 }, { name: "Deimos", Ti: 1.2263 }],
     overlays: [], binaryPeriod: 0,
   },
   jupiter: {
     stars: [{ name: "Sun", mass: 1.0 }],
-    Y1: 4332.6, localDay: 9.93, ecc: 0.0489, locked: false, N: 24,
-    sats: [{ name: "Io", Ti: 1.769 }, { name: "Europa", Ti: 3.551 }, { name: "Ganymede", Ti: 7.155 }, { name: "Callisto", Ti: 16.689 }],
+    // 1 木星日 = 9.93h = 0.41375 地球日；木星年 4332.6÷0.41375 = 10471 木星日
+    Y1: 10471, localDay: 9.93, ecc: 0.0489, locked: false, N: 24,
+    sats: [{ name: "Io", Ti: 4.276 }, { name: "Europa", Ti: 8.583 }, { name: "Ganymede", Ti: 17.29 }, { name: "Callisto", Ti: 40.33 }],
     overlays: [], binaryPeriod: 0,
   },
   tatooine: {
     stars: [{ name: "Kepler-16A", mass: 0.69 }, { name: "Kepler-16B", mass: 0.20 }],
+    // localDay=24 假设；1本地日=1地球日，数值不变
     Y1: 228.776, localDay: 24, ecc: 0.0069, locked: false, N: 24,
     sats: [],
     overlays: [{ name: "Binary orbit", period: 41.08 / 228.776 }],
@@ -269,7 +273,7 @@ const PRESETS = {
   },
   custom: {
     stars: [{ name: "Star A", mass: 1.0 }],
-    Y1: 100, localDay: 24, ecc: 0, locked: false, N: 24,
+    Y1: 100, localDay: 0, ecc: 0, locked: false, N: 24,
     sats: [], overlays: [], binaryPeriod: 0,
   },
   extreme: {
@@ -318,20 +322,22 @@ function Badge({ text, color }) {
 }
 
 // ── FORMULA ENGINE ──
+// Y1 和 Tᵢ 均以本地日为单位。localDay(小时) 仅用于推导时辰，可为 0。
 function compute(state) {
   const { Y1, localDay, ecc, locked, N, sats, stars, overlays, binaryPeriod } = state;
   const Z = (2 * Y1) / N;
   const lo = Y1 / N;
   const hi = Z;
-  const localDayDays = localDay / 24;
-  const dayExceedsYear = localDay > Y1 * 24;
-  const shichenValid = !locked && !dayExceedsYear;
+  // 年比一转还短 → 退化（如潮汐锁定极端情况）
+  const dayExceedsYear = Y1 < 1;
+  const shichenValid = !locked && !dayExceedsYear && localDay > 0;
   const shichen = shichenValid ? localDay / 12 : null;
 
   const classified = sats.map(s => {
     const Ti = s.Ti;
     let mode, label, color;
-    if (Ti < localDayDays) { mode = "excluded"; label = "sub-diurnal"; color = "#6b7280"; }
+    // Ti < 1 本地日 = 亚昼夜，公转快于自转，不参与历法
+    if (Ti < 1) { mode = "excluded"; label = "sub-diurnal"; color = "#6b7280"; }
     else if (Ti >= lo && Ti < hi) { mode = "A"; label = "intercalary"; color = "#10b981"; }
     else if (Ti < lo) { mode = "B"; label = "fast"; color = "#3b82f6"; }
     else { mode = "B"; label = "slow"; color = "#3b82f6"; }
@@ -355,12 +361,11 @@ function compute(state) {
   //   出处：古六历；《大衍历》（728年）；历代历法通用离散化法
   // 章余：Y₁/Tᵢ 余分 → bestRational(frac) → p/q 章法，置闰月
   //   出处：古六历「十九年七闰」；《授时历》（1281年）391年144闰，精度更高
-  // 岁余：Y₁/本地日 余分 → bestRational(frac) → p/q，置闰日
+  // 岁余：Y₁ 非整数本地日 → 余分直接读 → bestRational → p/q 置闰日
   //   出处：《四分历》（前104年）「岁余四分之一」→ 1/4 → 每4年置1闰日
-  //   公历闰年即此结构；三余同一数学机制，量纲依次为：日、月、年
+  //   Y₁ 已是本地日，不再需要除以 localDay；余分即 Y1 的小数部分
   // ─────────────────────────────────────────────────────────────────
-  const daysPerYear = (!locked && !dayExceedsYear && localDay > 0)
-    ? Y1 / (localDay / 24) : null;
+  const daysPerYear = (!locked && !dayExceedsYear) ? Y1 : null;
   const fracDay = daysPerYear !== null ? daysPerYear - Math.floor(daysPerYear) : null;
   const leapDay = (fracDay !== null && fracDay > 0.002 && fracDay < 0.998)
     ? { ...bestRational(fracDay), daysPerYear } : null;
@@ -460,13 +465,12 @@ function keplerTermTime(k, N, ecc, Y1) {
 
 function generateCalendar(state, r) {
   const { Y1, ecc, N, localDay } = state;
-  // 本地日换算：历法表全部输出以本地日为单位，地球日仅作换算桥
-  const ldd = localDay > 0 ? localDay / 24 : 1; // Earth days per 1 local day
+  // Y1 和 Tᵢ 已是本地日；无需 ldd 换算。localDay 仅用于换算注脚显示。
   const Z = r.Z;
-  if (N < 2 || Y1 <= 0) return { type: "solar", terms: [], Y1, N, ecc, ldd };
+  if (N < 2 || Y1 <= 0) return { type: "solar", terms: [], Y1, N, ecc, localDay };
 
   if (r.modeA.length === 0) {
-    // N solar terms per year; each spans Y1/N Earth days → convert to local days
+    // 纯太阳历：N 节气，每段 Y1/N 本地日
     const termLen = Y1 / N;
     const terms = [];
     let cum = 0;
@@ -475,9 +479,9 @@ function generateCalendar(state, r) {
       const t2 = ecc < 0.005 ? j * termLen : keplerTermTime(j, N, ecc, Y1);
       const len = t2 - t1;
       cum += len;
-      terms.push({ j, start: t1, length: len / ldd, lengthEarth: len, cumulative: cum });
+      terms.push({ j, start: t1, length: len, cumulative: cum });
     }
-    return { type: "solar", terms, Y1, Y1_local: Y1 / ldd, N, ecc, ldd, Z_local: Z / ldd };
+    return { type: "solar", terms, Y1, N, ecc, localDay, Z_local: Z };
   }
 
   const Ti = r.modeA[0].Ti;
@@ -510,8 +514,8 @@ function generateCalendar(state, r) {
   for (let k = 1; k <= totalMonths; k++) {
     const start = (k - 1) * Ti;
     const end = k * Ti;
-    // 朔余离散化：余分在本地日上自然累积，大/小月整数交替——同《大衍历》朔余法
-    const length = Math.round(k * Ti / ldd) - Math.round((k - 1) * Ti / ldd);
+    // 朔余离散化：Tᵢ 已是本地日，余分自然累积，大/小月整数交替——同《大衍历》朔余法
+    const length = Math.round(k * Ti) - Math.round((k - 1) * Ti);
     while (zqCursor < zqTimes.length && zqTimes[zqCursor] < start) zqCursor++;
     let zqCount = 0, tmp = zqCursor;
     while (tmp < zqTimes.length && zqTimes[tmp] < end) { zqCount++; tmp++; }
@@ -542,16 +546,16 @@ function generateCalendar(state, r) {
   }
 
   const totalLeap = years.filter(y => y.hasLeap).length;
-  const totalDaysSum = years.reduce((s, y) => s + y.totalDays, 0); // in local days
-  const expectedDays = Math.round(numYears * Y1 / ldd); // in local days
+  const totalDaysSum = years.reduce((s, y) => s + y.totalDays, 0); // 本地日
+  const expectedDays = Math.round(numYears * Y1); // 本地日，Y1已是本地日
   const theoreticalLeap = Math.round(numYears * frac0);
   const zhangQuality = theoreticalLeap > 0
     ? (Math.abs(frac0 - theoreticalLeap / numYears) / (theoreticalLeap / numYears) * 100).toFixed(4)
     : "N/A";
 
   return { type: "lunisolar", years, totalLeap, theoreticalLeap, zhangQuality, numYears,
-           Ti, Ti_local: Ti / ldd, Z, Z_local: Z / ldd, Y1, Y1_local: Y1 / ldd,
-           ldd, totalDaysSum, expectedDays };
+           Ti, Ti_local: Ti, Z, Z_local: Z, Y1, Y1_local: Y1,
+           localDay, totalDaysSum, expectedDays };
 }
 
 // ── MAIN ──
@@ -889,9 +893,9 @@ export default function CustomCalculator({ lang }) {
                   <div style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 4 }}>
                     {t.calTiZ((cal.Ti_local ?? cal.Ti).toFixed(3), (cal.Z_local ?? cal.Z).toFixed(3))}
                   </div>
-                  {cal.ldd && cal.ldd !== 1 && (
+                  {cal.localDay > 0 && cal.localDay !== 24 && (
                     <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 2 }}>
-                      {t.localDayConv(cal.ldd.toFixed(4), (state.localDay / 12).toFixed(3))}
+                      {t.localDayConv((cal.localDay / 24).toFixed(4), (cal.localDay / 12).toFixed(3))}
                     </div>
                   )}
                 </div>
@@ -938,9 +942,9 @@ export default function CustomCalculator({ lang }) {
                     {`Y₁ = ${(cal.Y1_local ?? cal.Y1).toFixed(2)} ${lang === "zh" ? "本地日" : "local days"}`}
                     {cal.ecc > 0.05 && <span style={{ color: "var(--orange)", marginLeft: 8 }}>{lang === "zh" ? "· 开普勒效应已激活" : "· Keplerian active"}</span>}
                   </div>
-                  {cal.ldd && cal.ldd !== 1 && (
+                  {cal.localDay > 0 && cal.localDay !== 24 && (
                     <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 2 }}>
-                      {t.localDayConv(cal.ldd.toFixed(4), (state.localDay / 12).toFixed(3))}
+                      {t.localDayConv((cal.localDay / 24).toFixed(4), (cal.localDay / 12).toFixed(3))}
                     </div>
                   )}
                 </div>
