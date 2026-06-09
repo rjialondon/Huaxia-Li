@@ -50,6 +50,10 @@ const L = {
     fraction: "年余分",
     leapFreq: "置闰频率 ≈ 每",
     localYears: "本地年一次",
+    leapDayTitle: "岁余 · 置闰日",
+    leapDayPerYear: "年长（本地日）",
+    leapDayFrac: "岁余",
+    leapDayCycle: (p, q) => `每 ${q} 年插 ${p} 个闰日`,
     formulaBox: "公式总结",
     output: "华夏历输出",
     luniSolar: "阴阳合历",
@@ -153,6 +157,10 @@ const L = {
     fraction: "Annual fraction",
     leapFreq: "Intercalary frequency ≈ every",
     localYears: "local years",
+    leapDayTitle: "Day Surplus · Leap Day (岁余)",
+    leapDayPerYear: "Year (local days)",
+    leapDayFrac: "Day surplus (岁余)",
+    leapDayCycle: (p, q) => `${p} leap day(s) per ${q} years`,
     formulaBox: "Formula Summary",
     output: "Huaxia Li Output",
     luniSolar: "Lunisolar Calendar",
@@ -340,7 +348,22 @@ function compute(state) {
 
   const gregWorks = stars.length === 1 && sats.length === 1 && modeA.length === 1 && !locked;
 
-  return { Z, lo, hi, shichen, shichenValid, classified, modeA, modeB, intercalary, gregWorks, dayExceedsYear };
+  // ── 三余结构（中国古历核心架构）──────────────────────────────────
+  // 朔余：Tᵢ 非整数 → round(k·Tᵢ)−round((k−1)·Tᵢ) → 大月30/小月29交替
+  //   出处：古六历；《大衍历》（728年）；历代历法通用离散化法
+  // 章余：Y₁/Tᵢ 余分 → bestRational(frac) → p/q 章法，置闰月
+  //   出处：古六历「十九年七闰」；《授时历》（1281年）391年144闰，精度更高
+  // 岁余：Y₁/本地日 余分 → bestRational(frac) → p/q，置闰日
+  //   出处：《四分历》（前104年）「岁余四分之一」→ 1/4 → 每4年置1闰日
+  //   公历闰年即此结构；三余同一数学机制，量纲依次为：日、月、年
+  // ─────────────────────────────────────────────────────────────────
+  const daysPerYear = (!locked && !dayExceedsYear && localDay > 0)
+    ? Y1 / (localDay / 24) : null;
+  const fracDay = daysPerYear !== null ? daysPerYear - Math.floor(daysPerYear) : null;
+  const leapDay = (fracDay !== null && fracDay > 0.002 && fracDay < 0.998)
+    ? { ...bestRational(fracDay), daysPerYear } : null;
+
+  return { Z, lo, hi, shichen, shichenValid, classified, modeA, modeB, intercalary, gregWorks, dayExceedsYear, leapDay };
 }
 
 // ── REPORT GENERATOR ──
@@ -391,6 +414,13 @@ function buildReport(state, r, t, lang) {
         const err = (Math.abs(br.p / br.q - r.intercalary.fraction) / r.intercalary.fraction * 100).toFixed(3);
         return [`  ${t.rZhang}: ${br.p}/${br.q}  (${zh ? "误差" : "error"}: ${err}%)`];
       })(),
+      "",
+    ] : []),
+    ...(r.leapDay ? [
+      `【${zh ? "岁余·置闰日" : "Day Surplus · Leap Day"}】`,
+      `  ${zh ? "年长（本地日）" : "Year (local days)"}: ${r.leapDay.daysPerYear.toFixed(4)}`,
+      `  ${zh ? "岁余" : "Day surplus"}: ${(r.leapDay.daysPerYear - Math.floor(r.leapDay.daysPerYear)).toFixed(4)}`,
+      `  ${r.leapDay.p}/${r.leapDay.q} → ${zh ? `每 ${r.leapDay.q} 年插 ${r.leapDay.p} 个闰日` : `${r.leapDay.p} leap day(s) per ${r.leapDay.q} years`}`,
       "",
     ] : []),
     ...((state.overlays || []).length > 0 ? [
@@ -471,6 +501,7 @@ function generateCalendar(state, r, numYears = 19) {
   for (let k = 1; k <= totalMonths; k++) {
     const start = (k - 1) * Ti;
     const end = k * Ti;
+    // 朔余离散化：余分自然累积，大月(30)/小月(29)自动交替——同《大衍历》朔余法
     const length = Math.round(k * Ti) - Math.round((k - 1) * Ti);
     while (zqCursor < zqTimes.length && zqTimes[zqCursor] < start) zqCursor++;
     let zqCount = 0, tmp = zqCursor;
@@ -718,6 +749,18 @@ export default function CustomCalculator({ lang }) {
                   <div>Y₁/Tᵢ = {r.intercalary.monthsPerYear.toFixed(4)} {t.monthsPerYear}</div>
                   <div>{t.fraction} = {r.intercalary.fraction.toFixed(4)}</div>
                   <div>{t.leapFreq} <b>{r.intercalary.interval.toFixed(2)}</b> {t.localYears}</div>
+                </div>
+              </div>
+            )}
+
+            {/* 岁余·置闰日 */}
+            {r.leapDay && (
+              <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px" }}>
+                <div style={{ fontSize: 12, color: "var(--orange)", fontFamily: "var(--mono)", letterSpacing: 1, marginBottom: 12, textTransform: "uppercase" }}>{t.leapDayTitle}</div>
+                <div style={{ fontSize: 13, fontFamily: "var(--mono)", lineHeight: 2, color: "var(--fg)" }}>
+                  <div>{t.leapDayPerYear} = {Math.floor(r.leapDay.daysPerYear)} + {(r.leapDay.daysPerYear - Math.floor(r.leapDay.daysPerYear)).toFixed(4)}</div>
+                  <div>{t.leapDayFrac} = {(r.leapDay.daysPerYear - Math.floor(r.leapDay.daysPerYear)).toFixed(4)} → {r.leapDay.p}/{r.leapDay.q}</div>
+                  <div style={{ color: "var(--orange)", fontWeight: 600 }}>{t.leapDayCycle(r.leapDay.p, r.leapDay.q)}</div>
                 </div>
               </div>
             )}
