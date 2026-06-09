@@ -66,6 +66,7 @@ const L = {
     presetJupiter: "木星",
     presetTatooine: "塔图因 (Kepler-16b)",
     presetCustom: "清空自定义",
+    presetExtreme: "极端 e=0.95",
     overlays: "乙型叠合体 (可选)",
     overlayName: "名称",
     overlayPeriod: "周期 (本地年)",
@@ -168,6 +169,7 @@ const L = {
     presetJupiter: "Jupiter",
     presetTatooine: "Tatooine (Kepler-16b)",
     presetCustom: "Clear / Custom",
+    presetExtreme: "Extreme e=0.95",
     overlays: "Mode B Overlays (optional)",
     overlayName: "Name",
     overlayPeriod: "Period (local years)",
@@ -253,6 +255,11 @@ const PRESETS = {
   custom: {
     stars: [{ name: "Star A", mass: 1.0 }],
     Y1: 100, localDay: 24, ecc: 0, locked: false, N: 24,
+    sats: [], overlays: [], binaryPeriod: 0,
+  },
+  extreme: {
+    stars: [{ name: "Star X", mass: 1.0 }],
+    Y1: 365.25, localDay: 24, ecc: 0.95, locked: false, N: 24,
     sats: [], overlays: [], binaryPeriod: 0,
   },
 };
@@ -550,7 +557,7 @@ export default function CustomCalculator({ lang }) {
 
         {/* Presets */}
         <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 16, flexWrap: "wrap" }}>
-          {[["earth", t.presetEarth], ["mars", t.presetMars], ["jupiter", t.presetJupiter], ["tatooine", t.presetTatooine], ["custom", t.presetCustom]].map(([k, label]) => (
+          {[["earth", t.presetEarth], ["mars", t.presetMars], ["jupiter", t.presetJupiter], ["tatooine", t.presetTatooine], ["extreme", t.presetExtreme], ["custom", t.presetCustom]].map(([k, label]) => (
             <button key={k} onClick={() => loadPreset(k)} style={{
               background: "var(--card)", color: "var(--dim2)", border: "1px solid var(--border)",
               borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 11,
