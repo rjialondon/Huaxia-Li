@@ -157,6 +157,13 @@ function HomePage({ lang, onNavigate }) {
       </div>
 
       <div className="license-text">{t.license}</div>
+      <div style={{ textAlign: "center", marginTop: 12 }}>
+        <a href="https://github.com/rjialondon/Huaxia-Li" target="_blank" rel="noopener noreferrer"
+          style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", textDecoration: "none", letterSpacing: 0.5 }}
+          onMouseEnter={e => e.currentTarget.style.color = "var(--accent)"}
+          onMouseLeave={e => e.currentTarget.style.color = "var(--dim)"}
+        >⌥ github.com/rjialondon/Huaxia-Li ↗</a>
+      </div>
     </div>
   );
 }
