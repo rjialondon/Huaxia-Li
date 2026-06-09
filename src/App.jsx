@@ -74,17 +74,9 @@ function HomePage({ lang, onNavigate }) {
   const [visitCount, setVisitCount] = useState(null);
 
   useEffect(() => {
-    const LS_KEY = "huaxia_li_last_visit";
-    const API = "https://api.counterapi.dev/v1/huaxia-li-app/views";
-    const now = Date.now();
-    const last = localStorage.getItem(LS_KEY);
-    const isNew = !last || now - parseInt(last) > 86400000;
-    fetch(isNew ? `${API}/up` : API)
+    fetch("https://rjialondon.goatcounter.com/counter//.json")
       .then(r => r.json())
-      .then(d => {
-        setVisitCount(d.count ?? null);
-        if (isNew) localStorage.setItem(LS_KEY, now.toString());
-      })
+      .then(d => setVisitCount(d.count ?? null))
       .catch(() => {});
   }, []);
   const cards = [
