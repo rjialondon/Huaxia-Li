@@ -74,7 +74,7 @@ function HomePage({ lang, onNavigate }) {
   const [visitCount, setVisitCount] = useState(null);
 
   useEffect(() => {
-    fetch("https://rjialondon.goatcounter.com/counter//.json")
+    fetch("https://rjialondon.goatcounter.com/counter/TOTAL.json")
       .then(r => r.json())
       .then(d => setVisitCount(d.count ?? null))
       .catch(() => {});
