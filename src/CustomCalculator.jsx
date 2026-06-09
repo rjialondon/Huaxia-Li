@@ -101,15 +101,16 @@ const L = {
     rFooter: "分析框架：贾润章《华夏历》2026 · §4 通用行星公式",
     calendarShow: "▼ 历法表",
     calendarHide: "▲ 历法表",
-    calYearLabel: "年", calMonthsLabel: "月数", calLeapLabel: "置闰", calDaysLabel: "天数",
+    calYearLabel: "年", calMonthsLabel: "月数", calLeapLabel: "置闰", calDaysLabel: "本地日",
     calLeapMark: (n) => `闰${n}月`,
     calNoLeap: "—",
-    calZhangSummary: (y, l, d) => `${y}年 · 理论置闰${l}次 · 合计 ${d} 天`,
+    calZhangSummary: (y, l, d) => `${y}年 · 理论置闰${l}次 · 合计 ${d} 本地日`,
     calZhangSimulated: (l) => `本次模拟: ${l}次 (历元效应)`,
     calZhangError: (p) => `章法精度: ${p}%`,
     calTermLabel: (j) => `节气 ${j}`,
-    calTermDays: "天",
-    calTiZ: (Ti, Z) => `Tᵢ = ${Ti} 天  ·  Z = ${Z} 天`,
+    calTermDays: "本地日",
+    calTiZ: (Ti, Z) => `Tᵢ = ${Ti} 本地日  ·  Z = ${Z} 本地日`,
+    localDayConv: (ed, sh) => `1 本地日 = ${ed} 地球日 · 1 时辰 = ${sh} 小时`,
   },
   en: {
     title: "Huaxia Calendar · Universal Planetary Formula · Custom Calculator",
@@ -207,15 +208,16 @@ const L = {
     rFooter: "Framework: Jia Runzhang, Huaxia Calendar (2026) · §4 Universal Planetary Formula",
     calendarShow: "▼ Calendar",
     calendarHide: "▲ Calendar",
-    calYearLabel: "Year", calMonthsLabel: "Months", calLeapLabel: "Intercalary", calDaysLabel: "Days",
+    calYearLabel: "Year", calMonthsLabel: "Months", calLeapLabel: "Intercalary", calDaysLabel: "Local Days",
     calLeapMark: (n) => `+M${n}`,
     calNoLeap: "—",
-    calZhangSummary: (y, l, d) => `${y} yrs · theoretical ${l} intercalary · ${d} days total`,
+    calZhangSummary: (y, l, d) => `${y} yrs · theoretical ${l} intercalary · ${d} local days total`,
     calZhangSimulated: (l) => `Simulated: ${l} (epoch effect)`,
     calZhangError: (p) => `Zhang accuracy: ${p}%`,
     calTermLabel: (j) => `Term ${j}`,
-    calTermDays: "days",
-    calTiZ: (Ti, Z) => `Tᵢ = ${Ti} d  ·  Z = ${Z} d`,
+    calTermDays: "local d",
+    calTiZ: (Ti, Z) => `Tᵢ = ${Ti} local d  ·  Z = ${Z} local d`,
+    localDayConv: (ed, sh) => `1 local day = ${ed} Earth days · 1 shichen = ${sh} h`,
   },
 };
 
@@ -457,12 +459,14 @@ function keplerTermTime(k, N, ecc, Y1) {
 }
 
 function generateCalendar(state, r) {
-  const { Y1, ecc, N } = state;
+  const { Y1, ecc, N, localDay } = state;
+  // 本地日换算：历法表全部输出以本地日为单位，地球日仅作换算桥
+  const ldd = localDay > 0 ? localDay / 24 : 1; // Earth days per 1 local day
   const Z = r.Z;
-  if (N < 2 || Y1 <= 0) return { type: "solar", terms: [], Y1, N, ecc };
+  if (N < 2 || Y1 <= 0) return { type: "solar", terms: [], Y1, N, ecc, ldd };
 
   if (r.modeA.length === 0) {
-    // N solar terms per year; each spans Y1/N days (= Z/2, not Z)
+    // N solar terms per year; each spans Y1/N Earth days → convert to local days
     const termLen = Y1 / N;
     const terms = [];
     let cum = 0;
@@ -471,9 +475,9 @@ function generateCalendar(state, r) {
       const t2 = ecc < 0.005 ? j * termLen : keplerTermTime(j, N, ecc, Y1);
       const len = t2 - t1;
       cum += len;
-      terms.push({ j, start: t1, length: len, cumulative: cum });
+      terms.push({ j, start: t1, length: len / ldd, lengthEarth: len, cumulative: cum });
     }
-    return { type: "solar", terms, Y1, N, ecc };
+    return { type: "solar", terms, Y1, Y1_local: Y1 / ldd, N, ecc, ldd, Z_local: Z / ldd };
   }
 
   const Ti = r.modeA[0].Ti;
@@ -506,8 +510,8 @@ function generateCalendar(state, r) {
   for (let k = 1; k <= totalMonths; k++) {
     const start = (k - 1) * Ti;
     const end = k * Ti;
-    // 朔余离散化：余分自然累积，大月(30)/小月(29)自动交替——同《大衍历》朔余法
-    const length = Math.round(k * Ti) - Math.round((k - 1) * Ti);
+    // 朔余离散化：余分在本地日上自然累积，大/小月整数交替——同《大衍历》朔余法
+    const length = Math.round(k * Ti / ldd) - Math.round((k - 1) * Ti / ldd);
     while (zqCursor < zqTimes.length && zqTimes[zqCursor] < start) zqCursor++;
     let zqCount = 0, tmp = zqCursor;
     while (tmp < zqTimes.length && zqTimes[tmp] < end) { zqCount++; tmp++; }
@@ -538,14 +542,16 @@ function generateCalendar(state, r) {
   }
 
   const totalLeap = years.filter(y => y.hasLeap).length;
-  const totalDaysSum = years.reduce((s, y) => s + y.totalDays, 0);
-  const expectedDays = Math.round(numYears * Y1);
+  const totalDaysSum = years.reduce((s, y) => s + y.totalDays, 0); // in local days
+  const expectedDays = Math.round(numYears * Y1 / ldd); // in local days
   const theoreticalLeap = Math.round(numYears * frac0);
   const zhangQuality = theoreticalLeap > 0
     ? (Math.abs(frac0 - theoreticalLeap / numYears) / (theoreticalLeap / numYears) * 100).toFixed(4)
     : "N/A";
 
-  return { type: "lunisolar", years, totalLeap, theoreticalLeap, zhangQuality, numYears, Ti, Z, Y1, totalDaysSum, expectedDays };
+  return { type: "lunisolar", years, totalLeap, theoreticalLeap, zhangQuality, numYears,
+           Ti, Ti_local: Ti / ldd, Z, Z_local: Z / ldd, Y1, Y1_local: Y1 / ldd,
+           ldd, totalDaysSum, expectedDays };
 }
 
 // ── MAIN ──
@@ -881,8 +887,13 @@ export default function CustomCalculator({ lang }) {
                     {lang === "zh" ? `华夏历法 · ${cal.numYears}年章法` : `Huaxia Calendar · ${cal.numYears}-Year Zhang Cycle`}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 4 }}>
-                    {t.calTiZ(cal.Ti.toFixed(4), cal.Z.toFixed(4))}
+                    {t.calTiZ((cal.Ti_local ?? cal.Ti).toFixed(3), (cal.Z_local ?? cal.Z).toFixed(3))}
                   </div>
+                  {cal.ldd && cal.ldd !== 1 && (
+                    <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 2 }}>
+                      {t.localDayConv(cal.ldd.toFixed(4), (state.localDay / 12).toFixed(3))}
+                    </div>
+                  )}
                 </div>
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ borderCollapse: "collapse", width: "100%", fontFamily: "var(--mono)", fontSize: 12 }}>
@@ -924,9 +935,14 @@ export default function CustomCalculator({ lang }) {
                     {lang === "zh" ? `太阳历节气表 · N=${cal.N}` : `Solar Terms · N=${cal.N}`}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 4 }}>
-                    {`Y₁ = ${cal.Y1.toFixed(2)} ${t.days}`}
+                    {`Y₁ = ${(cal.Y1_local ?? cal.Y1).toFixed(2)} ${lang === "zh" ? "本地日" : "local days"}`}
                     {cal.ecc > 0.05 && <span style={{ color: "var(--orange)", marginLeft: 8 }}>{lang === "zh" ? "· 开普勒效应已激活" : "· Keplerian active"}</span>}
                   </div>
+                  {cal.ldd && cal.ldd !== 1 && (
+                    <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 2 }}>
+                      {t.localDayConv(cal.ldd.toFixed(4), (state.localDay / 12).toFixed(3))}
+                    </div>
+                  )}
                 </div>
                 {cal.terms.length === 0 ? (
                   <div style={{ color: "var(--dim)", fontFamily: "var(--mono)", fontSize: 12 }}>—</div>
@@ -947,8 +963,8 @@ export default function CustomCalculator({ lang }) {
                 {state.ecc > 0.05 && (
                   <div style={{ marginTop: 12, fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", lineHeight: 1.6 }}>
                     {lang === "zh"
-                      ? `蓝 < Z=${r.Z.toFixed(2)}天（近日点快速节气）· 黄 > Z（远日点慢速节气）`
-                      : `Blue < Z=${r.Z.toFixed(2)}d (fast, near perihelion) · Yellow > Z (slow, near aphelion)`}
+                      ? `蓝 < Z=${(cal.Z_local ?? r.Z).toFixed(2)} 本地日（近日点快速）· 黄 > Z（远日点慢速）`
+                      : `Blue < Z=${(cal.Z_local ?? r.Z).toFixed(2)} local d (fast, perihelion) · Yellow > Z (slow, aphelion)`}
                   </div>
                 )}
               </div>
