@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CrossVerification from "./CrossVerification.jsx";
 import ExomoonHunter from "./ExomoonHunter.jsx";
 import CustomCalculator from "./CustomCalculator.jsx";
@@ -71,6 +71,22 @@ const STARS = Array.from({ length: 60 }, (_, i) => ({
 
 function HomePage({ lang, onNavigate }) {
   const t = NAV[lang];
+  const [visitCount, setVisitCount] = useState(null);
+
+  useEffect(() => {
+    const LS_KEY = "huaxia_li_last_visit";
+    const API = "https://api.counterapi.dev/v1/huaxia-li-app/views";
+    const now = Date.now();
+    const last = localStorage.getItem(LS_KEY);
+    const isNew = !last || now - parseInt(last) > 86400000;
+    fetch(isNew ? `${API}/up` : API)
+      .then(r => r.json())
+      .then(d => {
+        setVisitCount(d.count ?? null);
+        if (isNew) localStorage.setItem(LS_KEY, now.toString());
+      })
+      .catch(() => {});
+  }, []);
   const cards = [
     { key: "cross", title: t.card1Title, desc: t.card1Desc, color: "#d4a843", icon: "🌌" },
     { key: "exomoon", title: t.card2Title, desc: t.card2Desc, color: "#10b981", icon: "🔭" },
@@ -163,6 +179,19 @@ function HomePage({ lang, onNavigate }) {
           onMouseEnter={e => e.currentTarget.style.color = "var(--accent)"}
           onMouseLeave={e => e.currentTarget.style.color = "var(--dim)"}
         >⌥ github.com/rjialondon/Huaxia-Li ↗</a>
+      </div>
+
+      <div style={{ textAlign: "center", marginTop: 16, paddingBottom: 8 }}>
+        {visitCount !== null && (
+          <div style={{ fontSize: 12, color: "var(--dim2)", fontFamily: "var(--mono)", marginBottom: 5 }}>
+            👁 {visitCount.toLocaleString()} {lang === "zh" ? "次访问" : "visits"}
+          </div>
+        )}
+        <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)", opacity: 0.7, lineHeight: 1.6 }}>
+          {lang === "zh"
+            ? "隐私声明：不收集IP地址，仅统计访问次数。同一浏览器24小时内只计一次。"
+            : "Privacy: no IP addresses collected. Visit count only. One count per browser per 24 hours."}
+        </div>
       </div>
     </div>
   );
