@@ -58,6 +58,17 @@ const NAV = {
   },
 };
 
+const STARS = Array.from({ length: 60 }, (_, i) => ({
+  id: i,
+  top: `${Math.random() * 100}%`,
+  left: `${Math.random() * 100}%`,
+  size: Math.random() * 2 + 1,
+  dur: `${Math.random() * 4 + 2}s`,
+  delay: `${Math.random() * 5}s`,
+  minOp: Math.random() * 0.1 + 0.05,
+  maxOp: Math.random() * 0.5 + 0.3,
+}));
+
 function HomePage({ lang, onNavigate }) {
   const t = NAV[lang];
   const cards = [
@@ -67,66 +78,85 @@ function HomePage({ lang, onNavigate }) {
   ];
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: "40px 16px" }}>
+    <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 16px 48px" }}>
+
       {/* Hero */}
-      <div style={{ textAlign: "center", marginBottom: 48 }}>
-        <div style={{ fontSize: 42, fontWeight: 700, letterSpacing: 6, marginBottom: 8 }}>{t.heroTitle}</div>
-        <div style={{ fontSize: 16, color: "#d4a843", fontFamily: "var(--mono)", letterSpacing: 2, marginBottom: 4 }}>{t.heroSub}</div>
-        <div style={{ fontSize: 12, color: "var(--dim)", fontFamily: "var(--mono)", marginBottom: 20 }}>
-          C<sub>p</sub> = Φ<sub>A</sub>(Θ₁, {"{Ψ∈A}"}) ⊕ Φ<sub>B</sub>(Θ₁…Θ<sub>m</sub>, {"{Ψ∈B}"})
+      <div className="hero-wrap">
+        {/* Starfield */}
+        <div className="starfield">
+          {STARS.map(s => (
+            <div key={s.id} className="star" style={{
+              top: s.top, left: s.left,
+              width: s.size, height: s.size,
+              "--dur": s.dur, "--delay": s.delay,
+              "--min-op": s.minOp, "--max-op": s.maxOp,
+            }} />
+          ))}
+          <div className="orb" style={{ width: 300, height: 300, top: "-80px", left: "10%", background: "radial-gradient(circle, #d4a84312, transparent 70%)" }} />
+          <div className="orb" style={{ width: 250, height: 250, top: "20px", right: "5%", background: "radial-gradient(circle, #3b82f610, transparent 70%)", animationDelay: "4s" }} />
         </div>
-        <div style={{ fontSize: 14, color: "var(--dim2)", lineHeight: 1.8, maxWidth: 560, margin: "0 auto" }}>
-          {t.heroDesc}
+
+        <div className="hero-content">
+          <div className="hero-title">
+            <span className="title-gradient">{t.heroTitle}</span>
+            <div style={{ fontSize: 16, letterSpacing: 3, color: "var(--dim2)", fontFamily: "var(--mono)", fontWeight: 400, marginTop: 4 }}>Huaxia Calendar</div>
+          </div>
+          <div className="hero-sub">{t.heroSub}</div>
+          <div className="hero-formula">
+            C<sub>p</sub> = Φ<sub>A</sub>(Θ₁, {"{Ψ∈A}"}) ⊕ Φ<sub>B</sub>(Θ₁…Θ<sub>m</sub>, {"{Ψ∈B}"})
+          </div>
+          <div className="hero-desc">{t.heroDesc}</div>
+          <div className="hero-desc2">{t.heroDesc2}</div>
         </div>
-        <div style={{ fontSize: 13, color: "var(--dim)", marginTop: 12 }}>{t.heroDesc2}</div>
       </div>
 
+      <div className="section-divider" />
+
       {/* Cards */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 40 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 44 }}>
         {cards.map((c) => (
-          <button key={c.key} onClick={() => onNavigate(c.key)} style={{
-            background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14,
-            padding: "24px 28px", cursor: "pointer", textAlign: "left",
-            transition: "all 0.2s", display: "flex", gap: 20, alignItems: "start",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = c.color; e.currentTarget.style.boxShadow = `0 0 20px ${c.color}15`; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+          <button
+            key={c.key}
+            onClick={() => onNavigate(c.key)}
+            className="tool-card"
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = c.color;
+              e.currentTarget.style.boxShadow = `0 8px 32px ${c.color}18, 0 0 0 1px ${c.color}20`;
+              e.currentTarget.style.background = `${c.color}06`;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = "#222838";
+              e.currentTarget.style.boxShadow = "none";
+              e.currentTarget.style.background = "#11141c";
+            }}
           >
-            <div style={{ fontSize: 32, lineHeight: 1 }}>{c.icon}</div>
+            <div className="card-icon">{c.icon}</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: c.color, marginBottom: 6 }}>{c.title}</div>
-              <div style={{ fontSize: 13, color: "var(--dim2)", lineHeight: 1.7 }}>{c.desc}</div>
-              <div style={{ fontSize: 12, color: c.color, fontFamily: "var(--mono)", marginTop: 10 }}>{t.enter}</div>
+              <div className="card-title" style={{ color: c.color }}>{c.title}</div>
+              <div className="card-desc">{c.desc}</div>
+              <div className="card-enter" style={{ color: c.color }}>{t.enter}</div>
             </div>
           </button>
         ))}
       </div>
 
       {/* Tagline */}
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--fg)", letterSpacing: 1 }}>{t.tagline}</div>
-        <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 4 }}>{t.taglineEn}</div>
+      <div className="tagline-wrap">
+        <div className="tagline-main">{t.tagline}</div>
+        <div className="tagline-sub">{t.taglineEn}</div>
       </div>
 
       {/* Paper reference */}
-      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px", textAlign: "center" }}>
-        <div style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", marginBottom: 6 }}>{t.paperLabel}</div>
-        <div style={{ fontSize: 12, color: "var(--dim2)", lineHeight: 1.6 }}>{t.paperText}</div>
-        <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 10 }}>
-          <a href="https://doi.org/10.5281/zenodo.19571784" target="_blank" rel="noopener noreferrer" style={{
-            fontSize: 11, color: "#d4a843", fontFamily: "var(--mono)", textDecoration: "none",
-            padding: "4px 12px", border: "1px solid #d4a84340", borderRadius: 6,
-          }}>{t.zenodo} ↗</a>
-          <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6576158" target="_blank" rel="noopener noreferrer" style={{
-            fontSize: 11, color: "#d4a843", fontFamily: "var(--mono)", textDecoration: "none",
-            padding: "4px 12px", border: "1px solid #d4a84340", borderRadius: 6,
-          }}>{t.ssrn} ↗</a>
+      <div className="paper-card">
+        <div className="paper-label">{t.paperLabel}</div>
+        <div className="paper-text">{t.paperText}</div>
+        <div className="paper-links">
+          <a href="https://zenodo.org" target="_blank" rel="noopener noreferrer" className="paper-link">{t.zenodo} ↗</a>
+          <a href="https://ssrn.com" target="_blank" rel="noopener noreferrer" className="paper-link">{t.ssrn} ↗</a>
         </div>
       </div>
 
-      <div style={{ textAlign: "center", fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 20, lineHeight: 1.6 }}>
-        {t.license}
-      </div>
+      <div className="license-text">{t.license}</div>
     </div>
   );
 }
@@ -152,40 +182,28 @@ export default function App() {
       fontFamily: "var(--body)", background: "var(--bg)", color: "var(--fg)",
       minHeight: "100vh",
     }}>
-      <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-      <style>{`* { margin: 0; padding: 0; box-sizing: border-box; } body { background: #090b10; } button:hover { opacity: 0.9; } a:hover { opacity: 0.8; } input:focus { border-color: #d4a843 !important; }`}</style>
+      <style>{`input:focus { border-color: #d4a843 !important; } select:focus { border-color: #d4a843 !important; }`}</style>
 
       {/* Nav bar */}
-      <nav style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "10px 20px", borderBottom: "1px solid var(--border)",
-        background: "#090b10ee", backdropFilter: "blur(8px)",
-        position: "sticky", top: 0, zIndex: 100,
-      }}>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+      <nav className="navbar">
+        <div className="nav-items">
           {navItems.map((item) => (
-            <button key={item.key} onClick={() => setPage(item.key)} style={{
-              background: page === item.key ? "var(--accent)" : "transparent",
-              color: page === item.key ? "#090b10" : "var(--dim2)",
-              border: "none", borderRadius: 6, padding: "6px 14px", cursor: "pointer",
-              fontFamily: "var(--body)", fontSize: 13, fontWeight: page === item.key ? 700 : 400,
-              transition: "all 0.15s",
-            }}>{item.label}</button>
+            <button
+              key={item.key}
+              onClick={() => setPage(item.key)}
+              className={`nav-btn ${page === item.key ? "active" : "inactive"}`}
+            >{item.label}</button>
           ))}
         </div>
-        <button onClick={() => setLang(lang === "zh" ? "en" : "zh")} style={{
-          background: "transparent", color: "var(--accent)", border: "1px solid var(--accent)",
-          borderRadius: 6, padding: "4px 12px", cursor: "pointer",
-          fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700,
-        }}>{t.lang}</button>
+        <button onClick={() => setLang(lang === "zh" ? "en" : "zh")} className="lang-btn">{t.lang}</button>
       </nav>
 
       {/* Page content */}
       <div>
         {page === "home" && <HomePage lang={lang} onNavigate={setPage} />}
-        {page === "cross" && <CrossVerification />}
-        {page === "exomoon" && <ExomoonHunter />}
-        {page === "calc" && <CustomCalculator />}
+        {page === "cross" && <CrossVerification lang={lang} />}
+        {page === "exomoon" && <ExomoonHunter lang={lang} />}
+        {page === "calc" && <CustomCalculator lang={lang} />}
       </div>
     </div>
   );

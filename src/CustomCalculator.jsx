@@ -255,8 +255,7 @@ function compute(state) {
 }
 
 // ── MAIN ──
-export default function CustomCalculator() {
-  const [lang, setLang] = useState("zh");
+export default function CustomCalculator({ lang }) {
   const [state, setState] = useState({ ...PRESETS.earth });
   const t = L[lang];
   const r = compute(state);
@@ -291,12 +290,7 @@ export default function CustomCalculator() {
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 20, position: "relative" }}>
-          <button onClick={() => setLang(lang === "zh" ? "en" : "zh")} style={{
-            position: "absolute", right: 0, top: 0, background: "var(--card)", color: "var(--accent)",
-            border: "1px solid var(--accent)", borderRadius: 8, padding: "4px 14px", cursor: "pointer",
-            fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700,
-          }}>{t.lang}</button>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div style={{ fontSize: 11, color: "var(--accent)", letterSpacing: lang === "zh" ? 3 : 1, fontFamily: "var(--mono)", marginBottom: 4 }}>{t.title}</div>
           <div style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)" }}>{t.subtitle}</div>
         </div>

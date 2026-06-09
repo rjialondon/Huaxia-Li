@@ -2,6 +2,115 @@ import { useState, useMemo } from "react";
 
 const N = 24;
 
+const T = {
+  zh: {
+    header: "华夏历 · 甲型系外卫星猎手",
+    subtitle: "在已知系外卫星候选体中搜索满足置闰条件 Y₁/N ≤ Tᵢ < 2Y₁/N 的甲型实例",
+    summaryLabel: "/ {0} 满足甲型",
+    confirmed: (n) => n > 0 ? `其中 ${n} 已确认` : "",
+    candidates: (n) => n > 0 ? `${n} 候选` : "",
+    maybeLabel: (n) => n > 0 ? `· ${n} 个在不确定性范围内可能甲型` : "",
+    isModeA: "✓ 甲型！",
+    maybeA: "⚠ 范围可能甲型",
+    notA: "✗ 非甲型",
+    gaugeLabel: "Tᵢ 在甲型范围中的位置 (绿色区域=甲型)",
+    analysisOk: "✓ 满足甲型条件！可触发置闰交叉验证",
+    analysisMaybe: "⚠ 不确定性范围与甲型区间有交集",
+    analysisFail: "✗ 不满足甲型条件",
+    intercalaryTitle: "置闰预测",
+    monthsPerYear: "月/年",
+    intMonths: "整数月数",
+    fraction: "年余分",
+    leapFreq: "置闰频率 ≈ 每",
+    years: "年",
+    localYears: "本地年",
+    zhangVerify: "章法验证：7/19 =",
+    error: "误差",
+    conclusionTitle: "发现",
+    conclusion1: "除地球月球外，存在至少一个系外卫星候选体满足甲型条件——这意味着华夏历的置闰机制不仅仅是地球的特例，而是在其他恒星系统中也能被实例化的通用结构。",
+    conclusion2: "目前仅地球月球是唯一已确认的甲型实例，但部分候选体的不确定性范围与甲型区间有交集。随着JWST和VLTI/GRAVITY+的观测精度提升，未来可能发现更多甲型实例。",
+    conclusion3: "目前仅地球月球是唯一已知的甲型实例。",
+    conclusionNote: "需要注意：截至2026年，尚无任何系外卫星被正式确认。上述候选体均需进一步验证。但公式的价值在于——它提前给出了判定标准：只要 Y₁/N ≤ Tᵢ < 2Y₁/N，置闰自动成立，无需重新设计。标准在那里等着数据。",
+    footer1: "数据来源：Teachey & Kipping 2018 · Kipping 2022 · Kral et al. 2026 · NASA Kepler/HST · ESO VLTI/GRAVITY",
+    footer2: "分析框架：贾润章《华夏历》2026 · §4 甲型条件 Y₁/N ≤ Tᵢ < 2Y₁/N",
+    orbitLabel: "绕",
+    planetYear: "行星年",
+    zhongqi: "Z 中气间隔",
+    modeARange: "甲型范围",
+    tiEst: "Tᵢ (估计)",
+    tiRatio: "Tᵢ/Z",
+    tiRange: "Tᵢ范围",
+    days: "天",
+    earthYears: "地球年",
+    statusMap: { "已确认": "已确认", "争议中": "争议中", "初步信号": "初步信号" },
+    analysisSatPeriod: (Ti, lo, hi, pct) => `卫星朔望周期 Tᵢ=${Ti}天 落在 [${lo}, ${hi}) 天的甲型范围内。Tᵢ/Z = ${pct}%。`,
+    analysisNearZ: " 接近Z上限，与地球月球(97%)类似——近共振状态，置闰规则可以用「无中气」观测法直接实施。",
+    analysisMidRange: " 位于甲型中段，置闰频率较高，但「无中气」规则依然适用。",
+    analysisEarthLike: (Y1) => ` 行星年(${Y1}天)与地球(365.25天)在同一量级——这是一个"类地华夏历"的真实候选！`,
+    dirBelow: "低于", dirAbove: "高于",
+    analysisMaybeText: (Ti, dir, rlo, rhi, alo, ahi) => `估计值 Tᵢ≈${Ti}天 ${dir}甲型范围，但观测不确定性范围 [${rlo}, ${rhi}] 天与甲型区间 [${alo}, ${ahi}] 天存在交集。若未来观测精度提高并确认Tᵢ落入该范围，则甲型条件成立。`,
+    analysisPeriodNotA: (Ti, limitStr) => `卫星周期 Tᵢ≈${Ti}天 ${limitStr}。`,
+    analysisBelowLo: (lo) => `远低于甲型下限(${lo}天)`,
+    analysisAboveHi: (hi) => `高于甲型上限(${hi}天)`,
+    analysisModeB: " 归入乙型(Mode B)——可作独立计数轨叠合，但不参与置闰。",
+    leapMonth: "一次闰月",
+    satisfyModeA: "满足甲型",
+  },
+  en: {
+    header: "Huaxia Calendar · Mode A Exomoon Hunter",
+    subtitle: "Searching known exomoon candidates for Mode A intercalary eligibility: Y₁/N ≤ Tᵢ < 2Y₁/N",
+    summaryLabel: "/ {0} satisfy Mode A",
+    confirmed: (n) => n > 0 ? `${n} confirmed` : "",
+    candidates: (n) => n > 0 ? `${n} candidates` : "",
+    maybeLabel: (n) => n > 0 ? `· ${n} possibly Mode A within uncertainty` : "",
+    isModeA: "✓ Mode A!",
+    maybeA: "⚠ Possibly Mode A",
+    notA: "✗ Not Mode A",
+    gaugeLabel: "Tᵢ position within Mode A range (green zone = Mode A)",
+    analysisOk: "✓ Satisfies Mode A condition — intercalary cross-verification possible",
+    analysisMaybe: "⚠ Uncertainty range overlaps with Mode A interval",
+    analysisFail: "✗ Does not satisfy Mode A condition",
+    intercalaryTitle: "Intercalary Prediction",
+    monthsPerYear: "months/year",
+    intMonths: "Integer months",
+    fraction: "Annual fraction",
+    leapFreq: "Intercalary frequency ≈ every",
+    years: "years",
+    localYears: "local years",
+    zhangVerify: "Zhang rule: 7/19 =",
+    error: "error",
+    conclusionTitle: "Findings",
+    conclusion1: "Beyond Earth's Moon, at least one exomoon candidate satisfies Mode A — meaning the Huaxia Calendar's intercalary mechanism is not Earth-specific but a universal structure instanciable in other stellar systems.",
+    conclusion2: "Earth's Moon remains the only confirmed Mode A instance, but some candidates' uncertainty ranges overlap with the Mode A interval. Improved JWST and VLTI/GRAVITY+ precision may reveal more instances.",
+    conclusion3: "Earth's Moon is currently the only known Mode A instance.",
+    conclusionNote: "Note: As of 2026, no exomoon has been officially confirmed. All candidates require further verification. The formula's value lies in providing the criterion in advance: whenever Y₁/N ≤ Tᵢ < 2Y₁/N, intercalation is automatic. The standard awaits the data.",
+    footer1: "Data: Teachey & Kipping 2018 · Kipping 2022 · Kral et al. 2026 · NASA Kepler/HST · ESO VLTI/GRAVITY",
+    footer2: "Framework: Jia Runzhang, Huaxia Li (2026) · §4 Mode A condition Y₁/N ≤ Tᵢ < 2Y₁/N",
+    orbitLabel: "orbiting",
+    planetYear: "Planet Year",
+    zhongqi: "Z Zhongqi Interval",
+    modeARange: "Mode A Range",
+    tiEst: "Tᵢ (estimated)",
+    tiRatio: "Tᵢ/Z",
+    tiRange: "Tᵢ range",
+    days: "days",
+    earthYears: "Earth years",
+    statusMap: { "已确认": "Confirmed", "争议中": "Disputed", "初步信号": "Initial Signal" },
+    analysisSatPeriod: (Ti, lo, hi, pct) => `Satellite synodic period Tᵢ=${Ti} days falls within Mode A range [${lo}, ${hi}) days. Tᵢ/Z = ${pct}%.`,
+    analysisNearZ: " Near the Z upper bound, similar to Earth's Moon (97%) — near-resonance; intercalation can be directly implemented via the no-zhongqi rule.",
+    analysisMidRange: " In the mid-range of Mode A; higher intercalary frequency, but the no-zhongqi rule still applies.",
+    analysisEarthLike: (Y1) => ` Planet year (${Y1} days) is in the same order of magnitude as Earth (365.25 days) — a genuine "Earth-analogue Huaxia Calendar" candidate!`,
+    dirBelow: "below", dirAbove: "above",
+    analysisMaybeText: (Ti, dir, rlo, rhi, alo, ahi) => `Estimated Tᵢ≈${Ti} days is ${dir} the Mode A range, but uncertainty interval [${rlo}, ${rhi}] days overlaps with Mode A range [${alo}, ${ahi}] days. If future observations confirm Tᵢ is within that range, Mode A holds.`,
+    analysisPeriodNotA: (Ti, limitStr) => `Satellite period Tᵢ≈${Ti} days ${limitStr}.`,
+    analysisBelowLo: (lo) => `far below the Mode A lower bound (${lo} days)`,
+    analysisAboveHi: (hi) => `above the Mode A upper bound (${hi} days)`,
+    analysisModeB: " Classified as Mode B — can form independent cycle overlays, but not used for intercalation.",
+    leapMonth: "leap month",
+    satisfyModeA: "satisfy Mode A",
+  },
+};
+
 // =============================================
 // ALL KNOWN EXOMOON CANDIDATES + HOST PLANETS
 // Real data from Kepler, HST, VLTI/GRAVITY
@@ -138,7 +247,7 @@ function Gauge({ value, lo, hi, max, label }) {
   );
 }
 
-function CandidateCard({ c }) {
+function CandidateCard({ c, t, lang }) {
   const a = analyzeCandidate(c);
   const isModeA = a.inModeA;
 
@@ -152,7 +261,7 @@ function CandidateCard({ c }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--fg)" }}>{c.moonName}</div>
-          <div style={{ fontSize: 12, color: "var(--dim2)", marginTop: 2 }}>绕 {c.host} · {c.distance}</div>
+          <div style={{ fontSize: 12, color: "var(--dim2)", marginTop: 2 }}>{t.orbitLabel} {c.host} · {c.distance}</div>
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <span style={{
@@ -161,7 +270,7 @@ function CandidateCard({ c }) {
             color: c.confirmed ? "#10b981" : c.status === "初步信号" ? "#f59e0b" : "#ef4444",
             fontFamily: "var(--mono)",
           }}>
-            {c.status}
+            {(t.statusMap && t.statusMap[c.status]) || c.status}
           </span>
           <span style={{
             fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 12,
@@ -169,7 +278,7 @@ function CandidateCard({ c }) {
             color: isModeA ? "#10b981" : a.rangeOverlapsA ? "#f59e0b" : "#6b7280",
             fontFamily: "var(--mono)",
           }}>
-            {isModeA ? "✓ 甲型！" : a.rangeOverlapsA ? "⚠ 范围可能甲型" : "✗ 非甲型"}
+            {isModeA ? t.isModeA : a.rangeOverlapsA ? t.maybeA : t.notA}
           </span>
         </div>
       </div>
@@ -182,12 +291,12 @@ function CandidateCard({ c }) {
       {/* Parameters */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8, marginBottom: 12 }}>
         {[
-          ["Y₁ 行星年", c.Y1 > 1000 ? `${(c.Y1/365.25).toFixed(1)} 地球年` : `${c.Y1.toFixed(2)} 天`],
-          ["Z 中气间隔", `${a.Z.toFixed(2)} 天`],
-          ["甲型范围", `${a.lo.toFixed(1)}–${a.hi.toFixed(1)} 天`],
-          ["Tᵢ (估计)", `${c.Ti_est.toFixed(1)} 天`],
-          ["Tᵢ/Z", `${(a.ratioZ * 100).toFixed(1)}%`],
-          ["Tᵢ范围", `${c.Ti_range[0]}–${c.Ti_range[1]} 天`],
+          [`Y₁ ${t.planetYear}`, c.Y1 > 1000 ? `${(c.Y1/365.25).toFixed(1)} ${t.earthYears}` : `${c.Y1.toFixed(2)} ${t.days}`],
+          [t.zhongqi, `${a.Z.toFixed(2)} ${t.days}`],
+          [t.modeARange, `${a.lo.toFixed(1)}–${a.hi.toFixed(1)} ${t.days}`],
+          [t.tiEst, `${c.Ti_est.toFixed(1)} ${t.days}`],
+          [t.tiRatio, `${(a.ratioZ * 100).toFixed(1)}%`],
+          [t.tiRange, `${c.Ti_range[0]}–${c.Ti_range[1]} ${t.days}`],
         ].map(([label, val], i) => (
           <div key={i} style={{ background: "var(--cell)", borderRadius: 8, padding: "7px 11px" }}>
             <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)" }}>{label}</div>
@@ -198,7 +307,7 @@ function CandidateCard({ c }) {
 
       {/* Visual gauge */}
       <div style={{ padding: "8px 0 24px" }}>
-        <Gauge value={c.Ti_est} lo={a.lo} hi={a.hi} max={a.hi * 1.5} label="Tᵢ 在甲型范围中的位置 (绿色区域=甲型)" />
+        <Gauge value={c.Ti_est} lo={a.lo} hi={a.hi} max={a.hi * 1.5} label={t.gaugeLabel} />
       </div>
 
       {/* Analysis */}
@@ -208,29 +317,24 @@ function CandidateCard({ c }) {
         borderLeft: `4px solid ${isModeA ? "#10b981" : a.rangeOverlapsA ? "#f59e0b" : "#6b7280"}`,
       }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: isModeA ? "#10b981" : "var(--fg)", marginBottom: 6 }}>
-          {isModeA
-            ? "✓ 满足甲型条件！可触发置闰交叉验证"
-            : a.rangeOverlapsA
-              ? "⚠ 不确定性范围与甲型区间有交集"
-              : "✗ 不满足甲型条件"}
+          {isModeA ? t.analysisOk : a.rangeOverlapsA ? t.analysisMaybe : t.analysisFail}
         </div>
         <div style={{ fontSize: 12, color: "var(--dim2)", lineHeight: 1.7 }}>
           {isModeA ? (
             <>
-              卫星朔望周期 Tᵢ={c.Ti_est.toFixed(1)}天 落在 [{a.lo.toFixed(1)}, {a.hi.toFixed(1)}) 天的甲型范围内。
-              Tᵢ/Z = {(a.ratioZ*100).toFixed(1)}%。
-              {a.ratioZ > 0.9 && a.ratioZ < 1.0 && " 接近Z上限，与地球月球(97%)类似——近共振状态，置闰规则可以用\"无中气\"观测法直接实施。"}
-              {a.ratioZ < 0.9 && a.ratioZ >= 0.5 && " 位于甲型中段，置闰频率较高，但\"无中气\"规则依然适用。"}
-              {c.Y1 > 200 && c.Y1 < 400 && ` 行星年(${c.Y1.toFixed(1)}天)与地球(365.25天)在同一量级——这是一个\"类地华夏历\"的真实候选！`}
+              {t.analysisSatPeriod(c.Ti_est.toFixed(1), a.lo.toFixed(1), a.hi.toFixed(1), (a.ratioZ*100).toFixed(1))}
+              {a.ratioZ > 0.9 && a.ratioZ < 1.0 && t.analysisNearZ}
+              {a.ratioZ < 0.9 && a.ratioZ >= 0.5 && t.analysisMidRange}
+              {c.Y1 > 200 && c.Y1 < 400 && t.analysisEarthLike(c.Y1.toFixed(1))}
             </>
           ) : a.rangeOverlapsA ? (
             <>
-              估计值 Tᵢ≈{c.Ti_est.toFixed(1)}天 {a.tooFast ? "低于" : "高于"}甲型范围，但观测不确定性范围 [{c.Ti_range[0]}, {c.Ti_range[1]}] 天与甲型区间 [{a.lo.toFixed(1)}, {a.hi.toFixed(1)}] 天存在交集。若未来观测精度提高并确认Tᵢ落入该范围，则甲型条件成立。
+              {t.analysisMaybeText(c.Ti_est.toFixed(1), a.tooFast ? t.dirBelow : t.dirAbove, c.Ti_range[0], c.Ti_range[1], a.lo.toFixed(1), a.hi.toFixed(1))}
             </>
           ) : (
             <>
-              卫星周期 Tᵢ≈{c.Ti_est.toFixed(1)}天 {a.tooFast ? `远低于甲型下限(${a.lo.toFixed(1)}天)` : `高于甲型上限(${a.hi.toFixed(1)}天)`}。
-              {a.tooFast && " 归入乙型(Mode B)——可作独立计数轨叠合，但不参与置闰。"}
+              {t.analysisPeriodNotA(c.Ti_est.toFixed(1), a.tooFast ? t.analysisBelowLo(a.lo.toFixed(1)) : t.analysisAboveHi(a.hi.toFixed(1)))}
+              {a.tooFast && t.analysisModeB}
             </>
           )}
         </div>
@@ -239,7 +343,7 @@ function CandidateCard({ c }) {
       {/* Intercalary calculation if Mode A */}
       {isModeA && (
         <div style={{ background: "var(--cell)", borderRadius: 8, padding: "12px 16px", marginTop: 10 }}>
-          <div style={{ fontSize: 12, color: "#10b981", fontFamily: "var(--mono)", fontWeight: 600, marginBottom: 6 }}>置闰预测</div>
+          <div style={{ fontSize: 12, color: "#10b981", fontFamily: "var(--mono)", fontWeight: 600, marginBottom: 6 }}>{t.intercalaryTitle}</div>
           <div style={{ fontSize: 12, fontFamily: "var(--mono)", color: "var(--fg)", lineHeight: 1.9 }}>
             {(() => {
               const mpy = c.Y1 / c.Ti_est;
@@ -247,10 +351,10 @@ function CandidateCard({ c }) {
               const interval = frac > 0 ? 1 / frac : Infinity;
               return (
                 <>
-                  <div>Y₁/Tᵢ = {c.Y1.toFixed(2)} / {c.Ti_est.toFixed(1)} = <b>{mpy.toFixed(4)}</b> 月/年</div>
-                  <div>整数月数 = {Math.floor(mpy)} · 年余分 = {frac.toFixed(4)} 月</div>
-                  <div>置闰频率 ≈ 每 <b>{interval.toFixed(2)}</b> {c.host.includes("地球") ? "年" : "本地年"} 一次闰月</div>
-                  {c.id === "earth_ref" && <div style={{ color: "var(--dim2)", marginTop: 4 }}>章法验证：7/19 = {(7/19).toFixed(5)} vs {frac.toFixed(5)} → 误差 {(Math.abs(7/19 - frac)/frac*100).toFixed(3)}%</div>}
+                  <div>Y₁/Tᵢ = {c.Y1.toFixed(2)} / {c.Ti_est.toFixed(1)} = <b>{mpy.toFixed(4)}</b> {t.monthsPerYear}</div>
+                  <div>{t.intMonths} = {Math.floor(mpy)} · {t.fraction} = {frac.toFixed(4)}</div>
+                  <div>{t.leapFreq} <b>{interval.toFixed(2)}</b> {c.host.includes("地球") ? t.years : t.localYears} · {t.leapMonth}</div>
+                  {c.id === "earth_ref" && <div style={{ color: "var(--dim2)", marginTop: 4 }}>{t.zhangVerify} {(7/19).toFixed(5)} vs {frac.toFixed(5)} → {t.error} {(Math.abs(7/19 - frac)/frac*100).toFixed(3)}%</div>}
                 </>
               );
             })()}
@@ -266,90 +370,51 @@ function CandidateCard({ c }) {
   );
 }
 
-export default function ExomoonModeAHunter() {
-  const modeACandidates = CANDIDATES.filter(c => {
-    const a = analyzeCandidate(c);
-    return a.inModeA;
-  });
-
-  const maybeA = CANDIDATES.filter(c => {
-    const a = analyzeCandidate(c);
-    return !a.inModeA && a.rangeOverlapsA;
-  });
+export default function ExomoonModeAHunter({ lang = "zh" }) {
+  const t = T[lang];
+  const modeACandidates = CANDIDATES.filter(c => analyzeCandidate(c).inModeA);
+  const maybeA = CANDIDATES.filter(c => { const a = analyzeCandidate(c); return !a.inModeA && a.rangeOverlapsA; });
 
   return (
     <div style={{
-      "--bg": "#080a0f",
-      "--card": "#10131b",
-      "--cell": "#171c28",
-      "--border": "#222838",
-      "--fg": "#e2e5ed",
-      "--dim": "#6a7188",
-      "--dim2": "#8f96ab",
-      "--accent": "#c9a44a",
+      "--bg": "#080a0f", "--card": "#10131b", "--cell": "#171c28", "--border": "#222838",
+      "--fg": "#e2e5ed", "--dim": "#6a7188", "--dim2": "#8f96ab", "--accent": "#c9a44a",
       "--mono": "'JetBrains Mono', 'SF Mono', Menlo, monospace",
       "--body": "'Noto Serif SC', Georgia, serif",
-      fontFamily: "var(--body)",
-      background: "var(--bg)", color: "var(--fg)",
-      minHeight: "100vh", padding: "24px 16px",
-      maxWidth: 720, margin: "0 auto",
+      fontFamily: "var(--body)", background: "var(--bg)", color: "var(--fg)",
+      minHeight: "100vh", padding: "24px 16px", maxWidth: 720, margin: "0 auto",
     }}>
-      <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-
       {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 28 }}>
-        <div style={{ fontSize: 11, color: "var(--accent)", letterSpacing: 4, fontFamily: "var(--mono)", marginBottom: 6 }}>
-          华夏历 · 甲型系外卫星猎手
-        </div>
-        <div style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", lineHeight: 1.6 }}>
-          在已知系外卫星候选体中搜索满足置闰条件 Y₁/N ≤ Tᵢ &lt; 2Y₁/N 的甲型实例
-        </div>
+        <div style={{ fontSize: 11, color: "var(--accent)", letterSpacing: 4, fontFamily: "var(--mono)", marginBottom: 6 }}>{t.header}</div>
+        <div style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", lineHeight: 1.6 }}>{t.subtitle}</div>
       </div>
 
       {/* Summary */}
-      <div style={{
-        background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12,
-        padding: "16px 20px", marginBottom: 20, textAlign: "center",
-      }}>
+      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px", marginBottom: 20, textAlign: "center" }}>
         <div style={{ fontSize: 28, fontWeight: 700, color: "var(--accent)" }}>
-          {modeACandidates.length} <span style={{ fontSize: 14, fontWeight: 400, color: "var(--dim2)" }}>/ {CANDIDATES.length} 满足甲型</span>
+          {modeACandidates.length} <span style={{ fontSize: 14, fontWeight: 400, color: "var(--dim2)" }}>/ {CANDIDATES.length} {t.satisfyModeA}</span>
         </div>
         <div style={{ fontSize: 12, color: "var(--dim2)", marginTop: 4 }}>
-          {modeACandidates.filter(c => !c.confirmed).length > 0
-            ? `其中 ${modeACandidates.filter(c => c.confirmed).length} 已确认，${modeACandidates.filter(c => !c.confirmed).length} 候选`
-            : ""}
-          {maybeA.length > 0 && ` · ${maybeA.length} 个在不确定性范围内可能甲型`}
+          {modeACandidates.length > 0 && [t.confirmed(modeACandidates.filter(c=>c.confirmed).length), t.candidates(modeACandidates.filter(c=>!c.confirmed).length)].filter(Boolean).join("，")}
+          {t.maybeLabel(maybeA.length)}
         </div>
       </div>
 
       {/* Cards */}
-      {CANDIDATES.map(c => <CandidateCard key={c.id} c={c} />)}
+      {CANDIDATES.map(c => <CandidateCard key={c.id} c={c} t={t} lang={lang} />)}
 
       {/* Conclusion */}
-      <div style={{
-        background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12,
-        padding: "20px 24px", marginTop: 8,
-      }}>
-        <div style={{ fontSize: 13, color: "var(--accent)", fontFamily: "var(--mono)", fontWeight: 600, marginBottom: 10 }}>
-          发现
-        </div>
+      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "20px 24px", marginTop: 8 }}>
+        <div style={{ fontSize: 13, color: "var(--accent)", fontFamily: "var(--mono)", fontWeight: 600, marginBottom: 10 }}>{t.conclusionTitle}</div>
         <div style={{ fontSize: 13, color: "var(--fg)", lineHeight: 1.8 }}>
-          {modeACandidates.length > 1 ? (
-            "除地球月球外，存在至少一个系外卫星候选体满足甲型条件——这意味着华夏历的置闰机制不仅仅是地球的特例，而是在其他恒星系统中也能被实例化的通用结构。"
-          ) : modeACandidates.length === 1 && maybeA.length > 0 ? (
-            "目前仅地球月球是唯一已确认的甲型实例，但部分候选体的不确定性范围与甲型区间有交集。随着JWST和VLTI/GRAVITY+的观测精度提升，未来可能发现更多甲型实例。"
-          ) : (
-            "目前仅地球月球是唯一已知的甲型实例。"
-          )}
+          {modeACandidates.length > 1 ? t.conclusion1 : modeACandidates.length === 1 && maybeA.length > 0 ? t.conclusion2 : t.conclusion3}
         </div>
-        <div style={{ fontSize: 12, color: "var(--dim2)", lineHeight: 1.7, marginTop: 10 }}>
-          需要注意：截至2026年，尚无任何系外卫星被正式确认。上述候选体均需进一步验证。但公式的价值在于——它提前给出了判定标准：只要 Y₁/N ≤ Tᵢ &lt; 2Y₁/N，置闰自动成立，无需重新设计。标准在那里等着数据。
-        </div>
+        <div style={{ fontSize: 12, color: "var(--dim2)", lineHeight: 1.7, marginTop: 10 }}>{t.conclusionNote}</div>
       </div>
 
       <div style={{ textAlign: "center", fontSize: 10, color: "var(--dim)", marginTop: 20, fontFamily: "var(--mono)", lineHeight: 1.7 }}>
-        数据来源：Teachey & Kipping 2018 · Kipping 2022 · Kral et al. 2026 · NASA Kepler/HST · ESO VLTI/GRAVITY<br />
-        分析框架：贾润章《华夏历》2026 · §4 甲型条件 Y₁/N ≤ Tᵢ &lt; 2Y₁/N
+        {t.footer1}<br />{t.footer2}
       </div>
     </div>
   );

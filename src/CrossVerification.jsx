@@ -163,6 +163,18 @@ const T = {
 // =============================================
 // DATA — bilingual notes
 // =============================================
+
+// For names like "地球 Earth": zh→first word, en→rest. Pure-English names: first word for brevity.
+function sysDisplayName(name, lang, full = false) {
+  const firstIsChinese = /[一-鿿]/.test(name[0]);
+  if (firstIsChinese) {
+    const parts = name.split(" ");
+    if (lang === "zh") return full ? name : parts[0];
+    return parts.slice(1).join(" ") || name;
+  }
+  return full ? name : name.split(" ")[0];
+}
+
 const N_PARAM = 24;
 
 const SYSTEMS = [
@@ -354,7 +366,7 @@ function Detail({ sys, lang }) {
       <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", flexWrap: "wrap", gap: 8 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700 }}>{sys.emoji} {sys.name}</div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>{sys.emoji} {sysDisplayName(sys.name, lang, true)}</div>
             <div style={{ fontSize: 12, color: "var(--dim2)", marginTop: 4 }}>{sys.distance} · {sys.source}</div>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -511,7 +523,7 @@ function SummaryTable({ systems, lang }) {
             const a = analyze(sys, lang);
             return (
               <tr key={sys.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                <td style={{ padding: "6px 8px", fontWeight: 600, whiteSpace: "nowrap" }}>{sys.emoji} {sys.name.split(" ")[0]}</td>
+                <td style={{ padding: "6px 8px", fontWeight: 600, whiteSpace: "nowrap" }}>{sys.emoji} {sysDisplayName(sys.name, lang)}</td>
                 <td style={{ padding: "6px 8px" }}>{sys.m}</td>
                 <td style={{ padding: "6px 8px" }}>{sys.satellites.length}</td>
                 <td style={{ padding: "6px 8px", color: a.modeA.length > 0 ? "#10b981" : "var(--dim)" }}>{a.modeA.length > 0 ? a.modeA.length + " ✓" : "—"}</td>
@@ -527,10 +539,9 @@ function SummaryTable({ systems, lang }) {
   );
 }
 
-export default function App() {
+export default function CrossVerification({ lang }) {
   const [selected, setSelected] = useState("earth");
   const [view, setView] = useState("detail");
-  const [lang, setLang] = useState("zh");
   const t = T[lang];
 
   const categories = useMemo(() => {
@@ -553,17 +564,9 @@ export default function App() {
       fontFamily: "var(--body)", background: "var(--bg)", color: "var(--fg)",
       minHeight: "100vh", padding: "20px 12px",
     }}>
-      <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        {/* Title + Lang toggle */}
-        <div style={{ textAlign: "center", marginBottom: 24, position: "relative" }}>
-          <button onClick={() => setLang(lang === "zh" ? "en" : "zh")} style={{
-            position: "absolute", right: 0, top: 0,
-            background: "var(--card)", color: "var(--accent)", border: "1px solid var(--accent)",
-            borderRadius: 8, padding: "4px 14px", cursor: "pointer",
-            fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700,
-          }}>{t.langToggle}</button>
+        {/* Title */}
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
           <div style={{ fontSize: 11, color: "var(--accent)", letterSpacing: lang === "zh" ? 4 : 1, fontFamily: "var(--mono)", marginBottom: 6 }}>{t.title}</div>
           <div style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)" }}>
             C<sub>p</sub> = Φ<sub>A</sub>(Θ₁,{"{Ψ∈A}"}) ⊕ Φ<sub>B</sub>(Θ₁…Θ<sub>m</sub>,{"{Ψ∈B}"}) · {t.subtitle}
@@ -602,7 +605,7 @@ export default function App() {
                       fontFamily: "var(--body)", fontSize: 13, textAlign: "left",
                       transition: "all 0.15s", width: "100%", opacity: selected === s.id ? 1 : 0.85,
                     }}>
-                      <div style={{ fontWeight: 600 }}>{s.emoji} {s.name.split(" ")[0]}</div>
+                      <div style={{ fontWeight: 600 }}>{s.emoji} {sysDisplayName(s.name, lang)}</div>
                       <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>m={s.m} n={s.satellites.length} · {s.distance}</div>
                     </button>
                   ))}
