@@ -955,7 +955,7 @@ export default function CustomCalculator({ lang }) {
                     {cal.terms.map(term => (
                       <div key={term.j} style={{
                         background: "var(--cell)", borderRadius: 6, padding: "7px 9px",
-                        borderLeft: `3px solid ${term.length < r.Z - 0.01 ? "#3b82f6" : term.length > r.Z + 0.01 ? "#f59e0b" : "#10b981"}`,
+                        borderLeft: `3px solid ${term.length < r.lo * 0.99 ? "#3b82f6" : term.length > r.lo * 1.01 ? "#f59e0b" : "#10b981"}`,
                       }}>
                         <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)" }}>{t.calTermLabel(term.j)}</div>
                         <div style={{ fontSize: 12, fontWeight: 600 }}>{term.length.toFixed(2)}</div>
@@ -964,11 +964,11 @@ export default function CustomCalculator({ lang }) {
                     ))}
                   </div>
                 )}
-                {state.ecc > 0.05 && (
+                {state.ecc > 0.01 && (
                   <div style={{ marginTop: 12, fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", lineHeight: 1.6 }}>
                     {lang === "zh"
-                      ? `蓝 < Z=${(cal.Z_local ?? r.Z).toFixed(2)} 本地日（近日点快速）· 黄 > Z（远日点慢速）`
-                      : `Blue < Z=${(cal.Z_local ?? r.Z).toFixed(2)} local d (fast, perihelion) · Yellow > Z (slow, aphelion)`}
+                      ? `蓝 < 均值 ${r.lo.toFixed(2)} 本地日（近日点快速）· 黄 > 均值（远日点慢速）`
+                      : `Blue < mean ${r.lo.toFixed(2)} local d (fast, perihelion) · Yellow > mean (slow, aphelion)`}
                   </div>
                 )}
               </div>
