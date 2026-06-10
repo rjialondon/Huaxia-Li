@@ -723,7 +723,7 @@ function YearView({ cal, r, lang, t }) {
         <div style={{ fontSize: 10, color: "var(--accent)", fontFamily: "var(--mono)", marginBottom: 4 }}>{t.yearViewPhiB}</div>
         <div style={{ display: "flex", gap: 1, borderRadius: 4, overflow: "hidden", height: 32, position: "relative" }}>
           {d1.terms.map((term, i) => {
-            const nextDay = i + 1 < d1.terms.length ? d1.terms[i + 1].day : d1.totalDays + 1;
+            const nextDay = i + 1 < d1.terms.length ? d1.terms[i + 1].day : Math.round(cal.Y1) + 1;
             const len = nextDay - term.day;
             const color = len < r.lo * 0.99 ? "#3b82f6" : len > r.lo * 1.01 ? "#f59e0b" : "#10b981";
             const isAph = cal.aphTermNum === term.j;
@@ -737,7 +737,7 @@ function YearView({ cal, r, lang, t }) {
         </div>
         <div style={{ display: "flex", fontSize: 8, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 2, position: "relative", height: 12 }}>
           {d1.terms.filter((_, i) => i % Math.max(1, Math.round(d1.terms.length / 8)) === 0).map((term, i) => (
-            <div key={i} style={{ position: "absolute", left: `${(term.day - 1) / d1.totalDays * 100}%`, transform: "translateX(-50%)" }}>
+            <div key={i} style={{ position: "absolute", left: `${(term.day - 1) / Math.round(cal.Y1) * 100}%`, transform: "translateX(-50%)" }}>
               {zh ? `第${term.day}日` : `d${term.day}`}
             </div>
           ))}
@@ -752,14 +752,17 @@ function YearView({ cal, r, lang, t }) {
       </div>
 
       {/* 月份整数日表 */}
-      <DayTable rows={d1.months.map(m => ({
-        label: m.isIntercalary ? (zh ? `闰${m.leapAfter}月` : `Leap M${m.leapAfter}`) : (zh ? `${m.num}月` : `Month ${m.num}`),
-        labelColor: m.isIntercalary ? "#f59e0b" : "var(--dim2)",
-        startDay: zh ? `第 ${m.dayStart} 日` : `Day ${m.dayStart}`,
-        days: m.length,
-        highlight: m.isIntercalary ? "#f59e0b" : m.length === 30 ? "#10b981" : null,
-        note: m.isIntercalary ? (zh ? "无中气 → 置闰" : "no Zhongqi → intercalary") : m.length === 30 ? (zh ? "大月" : "long month") : (zh ? "小月" : "short month"),
-      }))} />
+      {(() => {
+        const longMonth = Math.ceil(cal.Ti);
+        return <DayTable rows={d1.months.map(m => ({
+          label: m.isIntercalary ? (zh ? `闰${m.leapAfter}月` : `Leap M${m.leapAfter}`) : (zh ? `${m.num}月` : `Month ${m.num}`),
+          labelColor: m.isIntercalary ? "#f59e0b" : "var(--dim2)",
+          startDay: zh ? `第 ${m.dayStart} 日` : `Day ${m.dayStart}`,
+          days: m.length,
+          highlight: m.isIntercalary ? "#f59e0b" : m.length >= longMonth ? "#10b981" : null,
+          note: m.isIntercalary ? (zh ? "无中气 → 置闰" : "no Zhongqi → intercalary") : m.length >= longMonth ? (zh ? "大月" : "long month") : (zh ? "小月" : "short month"),
+        }))} />;
+      })()}
     </div>
   );
 }
