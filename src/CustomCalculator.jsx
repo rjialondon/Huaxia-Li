@@ -639,15 +639,49 @@ function YearView({ cal, r, lang, t }) {
     </div>
   );
 
+  // 整数日月份表（通用）
+  const DayTable = ({ rows, leapTermNum }) => (
+    <div style={{ overflowX: "auto", marginTop: 8 }}>
+      <table style={{ borderCollapse: "collapse", fontFamily: "var(--mono)", fontSize: 12, width: "100%" }}>
+        <thead>
+          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+            {[zh ? "月/节气" : "Month/Term", zh ? "起始日" : "Start day", zh ? "天数" : "Days", zh ? "备注" : "Note"].map((h, i) => (
+              <th key={i} style={{ padding: "5px 12px", textAlign: "left", color: "var(--dim)", fontWeight: 400, fontSize: 11 }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} style={{ borderBottom: "1px solid #ffffff06", background: row.highlight ? row.highlight + "12" : "transparent" }}>
+              <td style={{ padding: "3px 12px", color: row.labelColor ?? "var(--dim2)" }}>{row.label}</td>
+              <td style={{ padding: "3px 12px" }}>{row.startDay}</td>
+              <td style={{ padding: "3px 12px", fontWeight: row.highlight ? 600 : 400, color: row.highlight ?? "var(--fg)" }}>{row.days}</td>
+              <td style={{ padding: "3px 12px", fontSize: 10, color: "var(--dim)" }}>{row.note ?? ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
   if (cal.type === "solar") {
+    const rows = cal.terms.map(term => {
+      const isAph = cal.aphTermNum === term.j;
+      const isFast = term.length < r.lo * 0.99;
+      const isSlow = term.length > r.lo * 1.01;
+      return {
+        label: zh ? `节气 ${term.j}` : `Term ${term.j}`,
+        labelColor: isAph ? "#f59e0b" : "var(--dim2)",
+        startDay: zh ? `第 ${term.dayStart} 日` : `Day ${term.dayStart}`,
+        days: Math.round(term.length),
+        highlight: isAph ? "#f59e0b" : isFast ? "#3b82f6" : isSlow ? "#f59e0b" : null,
+        note: isAph ? (zh ? "← 闰日 · 远日点" : "← leap day · aphelion") : isFast ? (zh ? "近日点" : "perihelion") : isSlow ? (zh ? "远日点侧" : "aphelion side") : "",
+      };
+    });
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <PhiBRow terms={cal.terms} totalW={Y1} />
-        {cal.solarYears && (
-          <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)" }}>
-            {zh ? `远日点 ▲ 第${cal.aphTermNum}节气 · 闰日插于此` : `Aphelion ▲ Term ${cal.aphTermNum} · leap day inserted here`}
-          </div>
-        )}
+        <DayTable rows={rows} />
       </div>
     );
   }
@@ -712,6 +746,16 @@ function YearView({ cal, r, lang, t }) {
           : `Year 1 · ${d1.months.length} months · ${d1.totalDays} local days · N=${cal.N} terms`}
         {cal.aphTermNum && <span style={{ color: "#f59e0b", marginLeft: 8 }}>{zh ? `▲ 远日点 第${cal.aphTermNum}节气` : `▲ aphelion term ${cal.aphTermNum}`}</span>}
       </div>
+
+      {/* 月份整数日表 */}
+      <DayTable rows={d1.months.map(m => ({
+        label: m.isIntercalary ? (zh ? `闰${m.leapAfter}月` : `Leap M${m.leapAfter}`) : (zh ? `${m.num}月` : `Month ${m.num}`),
+        labelColor: m.isIntercalary ? "#f59e0b" : "var(--dim2)",
+        startDay: zh ? `第 ${m.dayStart} 日` : `Day ${m.dayStart}`,
+        days: m.length,
+        highlight: m.isIntercalary ? "#f59e0b" : m.length === 30 ? "#10b981" : null,
+        note: m.isIntercalary ? (zh ? "无中气 → 置闰" : "no Zhongqi → intercalary") : m.length === 30 ? (zh ? "大月" : "long month") : (zh ? "小月" : "short month"),
+      }))} />
     </div>
   );
 }
