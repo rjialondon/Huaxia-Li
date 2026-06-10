@@ -210,10 +210,11 @@ const SYSTEMS = [
     satellites: [
       { name: "木卫一 Io", Ti: 1.769, TiIsSynodic: false }, { name: "木卫二 Europa", Ti: 3.551, TiIsSynodic: false },
       { name: "木卫三 Ganymede", Ti: 7.155, TiIsSynodic: false }, { name: "木卫四 Callisto", Ti: 16.689, TiIsSynodic: false },
+      { name: "木卫六 Himalia", Ti: 250.56, TiIsSynodic: false }, // T_syn≈265.9d, 落入甲型区间 [180.5,361)
     ],
     overlays: [],
-    notes_zh: "多卫星乙型叠合测试。四颗伽利略卫星全部周期过快，输出太阳层+4条计数轨。",
-    notes_en: "Multi-satellite Mode B test. All four Galilean moons too fast for Mode A; outputs solar layer + 4 counting tracks.",
+    notes_zh: "木卫六喜马拉雅(Himalia, T_sid=250.56d, T_syn≈265.9d)落入甲型区间 [180.5, 361.0) → 阴阳合历。四颗伽利略卫星全部乙型(周期过快)。",
+    notes_en: "Himalia (T_sid=250.56d, T_syn≈265.9d) falls in Mode A range [180.5, 361.0) → Lunisolar calendar. All four Galilean moons are Mode B (too fast).",
   },
   {
     id: "venus", category: "太阳系验证基线", name: "金星 Venus", emoji: "🌕", distance: "0 ly",
