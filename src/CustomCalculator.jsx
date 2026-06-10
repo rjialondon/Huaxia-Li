@@ -112,7 +112,8 @@ const L = {
     calTiZ: (Ti, Z) => `Tᵢ = ${Ti} 本地日  ·  Z = ${Z} 本地日`,
     localDayConv: (ed, sh) => `1 本地日 = ${ed} 地球日 · 1 时辰 = ${sh} 小时`,
     solarCycleTitle: (n) => `岁余 · ${n}年置闰周期`,
-    solarLeapDay: "+1日",
+    solarLeapDay: (n) => `+1日 · 第${n}节气后`,
+    solarLeapMark: "← 闰日",
     solarYearSummary: (y, l, d) => `${y}年 · 置闰${l}次 · 合计 ${d} 本地日`,
   },
   en: {
@@ -222,7 +223,8 @@ const L = {
     calTiZ: (Ti, Z) => `Tᵢ = ${Ti} local d  ·  Z = ${Z} local d`,
     localDayConv: (ed, sh) => `1 local day = ${ed} Earth days · 1 shichen = ${sh} h`,
     solarCycleTitle: (n) => `Day Surplus · ${n}-Year Leap Cycle`,
-    solarLeapDay: "+1 d",
+    solarLeapDay: (n) => `+1 d · after term ${n}`,
+    solarLeapMark: "← leap day",
     solarYearSummary: (y, l, d) => `${y} yrs · ${l} leap insertions · ${d} local days total`,
   },
 };
@@ -489,6 +491,9 @@ function generateCalendar(state, r) {
     }
     // 岁余年表：同朔余算法，Y₁ 非整数 → round(k·Y₁)−round((k−1)·Y₁) → 大/小年交替
     // 出处：《四分历》岁余四分之一；地球=4年1闰，火星≈5年3闰，各星自推
+    // 闰日位置：远日点（最长节气末尾）——余分在此积累，还于此处，同无中气置闰逻辑
+    const aphTermIdx = terms.reduce((mi, t, i, a) => t.length > a[mi].length ? i : mi, 0);
+    const aphTermNum = terms[aphTermIdx].j; // 远日点节气编号（1-based）
     const fracDay = Y1 - Math.floor(Y1);
     let solarYears = null;
     if (fracDay > 0.002 && fracDay < 0.998) {
@@ -501,9 +506,9 @@ function generateCalendar(state, r) {
       }
       const leapCount = yrs.filter(y => y.isLeap).length;
       const totalDays = yrs.reduce((s, y) => s + y.days, 0);
-      solarYears = { years: yrs, numYears: numYrs, leapCount, totalDays };
+      solarYears = { years: yrs, numYears: numYrs, leapCount, totalDays, aphTermNum };
     }
-    return { type: "solar", terms, Y1, N, ecc, localDay, Z_local: Z, solarYears };
+    return { type: "solar", terms, Y1, N, ecc, localDay, Z_local: Z, solarYears, aphTermNum };
   }
 
   const Ti = r.modeA[0].Ti;
@@ -974,16 +979,24 @@ export default function CustomCalculator({ lang }) {
                   <div style={{ color: "var(--dim)", fontFamily: "var(--mono)", fontSize: 12 }}>—</div>
                 ) : (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 5 }}>
-                    {cal.terms.map(term => (
-                      <div key={term.j} style={{
-                        background: "var(--cell)", borderRadius: 6, padding: "7px 9px",
-                        borderLeft: `3px solid ${term.length < r.lo * 0.99 ? "#3b82f6" : term.length > r.lo * 1.01 ? "#f59e0b" : "#10b981"}`,
-                      }}>
-                        <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)" }}>{t.calTermLabel(term.j)}</div>
-                        <div style={{ fontSize: 12, fontWeight: 600 }}>{term.length.toFixed(2)}</div>
-                        <div style={{ fontSize: 10, color: "var(--dim2)" }}>{t.calTermDays}</div>
-                      </div>
-                    ))}
+                    {cal.terms.map(term => {
+                      const isAph = cal.aphTermNum === term.j;
+                      return (
+                        <div key={term.j} style={{
+                          background: isAph ? "#f59e0b08" : "var(--cell)",
+                          borderRadius: 6, padding: "7px 9px",
+                          borderLeft: `3px solid ${term.length < r.lo * 0.99 ? "#3b82f6" : term.length > r.lo * 1.01 ? "#f59e0b" : "#10b981"}`,
+                          outline: isAph && cal.solarYears ? "1px dashed #f59e0b60" : "none",
+                        }}>
+                          <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)" }}>{t.calTermLabel(term.j)}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600 }}>{term.length.toFixed(2)}</div>
+                          <div style={{ fontSize: 10, color: "var(--dim2)" }}>{t.calTermDays}</div>
+                          {isAph && cal.solarYears && (
+                            <div style={{ fontSize: 9, color: "#f59e0b", fontFamily: "var(--mono)", marginTop: 2 }}>{t.solarLeapMark}</div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 {state.ecc > 0.01 && (
@@ -1015,7 +1028,7 @@ export default function CustomCalculator({ lang }) {
                               <td style={{ padding: "4px 12px", color: "var(--dim2)" }}>{y.y}</td>
                               <td style={{ padding: "4px 12px", fontWeight: y.isLeap ? 600 : 400, color: y.isLeap ? "var(--accent)" : "var(--fg)" }}>{y.days}</td>
                               <td style={{ padding: "4px 12px", color: y.isLeap ? "var(--accent)" : "var(--dim)", fontWeight: y.isLeap ? 600 : 400 }}>
-                                {y.isLeap ? t.solarLeapDay : t.calNoLeap}
+                                {y.isLeap ? t.solarLeapDay(cal.solarYears.aphTermNum) : t.calNoLeap}
                               </td>
                             </tr>
                           ))}
