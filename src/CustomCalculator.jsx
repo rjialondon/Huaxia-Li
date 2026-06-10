@@ -111,6 +111,9 @@ const L = {
     calTermDays: "本地日",
     calTiZ: (Ti, Z) => `Tᵢ = ${Ti} 本地日  ·  Z = ${Z} 本地日`,
     localDayConv: (ed, sh) => `1 本地日 = ${ed} 地球日 · 1 时辰 = ${sh} 小时`,
+    yearViewTitle: "年图 · Cp = ΦA ⊕ ΦB",
+    yearViewPhiA: "ΦA 月份层",
+    yearViewPhiB: "ΦB 节气层",
     solarCycleTitle: (n) => `岁余 · ${n}年置闰周期`,
     solarLeapDay: (n) => `+1日 · 第${n}节气后`,
     solarLeapMark: "← 闰日",
@@ -222,6 +225,9 @@ const L = {
     calTermDays: "local d",
     calTiZ: (Ti, Z) => `Tᵢ = ${Ti} local d  ·  Z = ${Z} local d`,
     localDayConv: (ed, sh) => `1 local day = ${ed} Earth days · 1 shichen = ${sh} h`,
+    yearViewTitle: "Year View · Cp = ΦA ⊕ ΦB",
+    yearViewPhiA: "ΦA Lunar months",
+    yearViewPhiB: "ΦB Solar terms",
     solarCycleTitle: (n) => `Day Surplus · ${n}-Year Leap Cycle`,
     solarLeapDay: (n) => `+1 d · after term ${n}`,
     solarLeapMark: "← leap day",
@@ -487,7 +493,7 @@ function generateCalendar(state, r) {
       const t2 = ecc < 0.005 ? j * termLen : keplerTermTime(j, N, ecc, Y1);
       const len = t2 - t1;
       cum += len;
-      terms.push({ j, start: t1, length: len, cumulative: cum });
+      terms.push({ j, start: t1, length: len, cumulative: cum, dayStart: Math.round(t1) + 1 });
     }
     // 岁余年表：同朔余算法，Y₁ 非整数 → round(k·Y₁)−round((k−1)·Y₁) → 大/小年交替
     // 出处：《四分历》岁余四分之一；地球=4年1闰，火星≈5年3闰，各星自推
@@ -572,6 +578,22 @@ function generateCalendar(state, r) {
     }
   }
 
+  // 第1年详图：月份整数起始日 + 节气整数起始日，供 Cp = ΦA ⊕ ΦB 图解
+  let year1detail = null;
+  if (years.length > 0) {
+    let d = 1;
+    const y1months = years[0].months.map(m => {
+      const mo = { ...m, dayStart: d };
+      d += m.length;
+      return mo;
+    });
+    const termStarts = Array.from({ length: N }, (_, idx) => {
+      const t = ecc < 0.005 ? idx * (Y1 / N) : keplerTermTime(idx, N, ecc, Y1);
+      return { j: idx + 1, day: Math.round(t) + 1 };
+    });
+    year1detail = { months: y1months, terms: termStarts, totalDays: years[0].totalDays };
+  }
+
   const totalLeap = years.filter(y => y.hasLeap).length;
   const totalDaysSum = years.reduce((s, y) => s + y.totalDays, 0); // 本地日
   const expectedDays = Math.round(numYears * Y1); // 本地日，Y1已是本地日
@@ -582,7 +604,116 @@ function generateCalendar(state, r) {
 
   return { type: "lunisolar", years, totalLeap, theoreticalLeap, zhangQuality, numYears,
            Ti, Ti_local: Ti, Z, Z_local: Z, Y1, Y1_local: Y1,
-           localDay, totalDaysSum, expectedDays };
+           localDay, totalDaysSum, expectedDays, year1detail };
+}
+
+// ── YEAR VIEW COMPONENT ──
+function YearView({ cal, r, lang, t }) {
+  const zh = lang === "zh";
+  const Y1 = cal.Y1;
+
+  // ΦB 节气层：每格按比例宽度，标整数起始日
+  const PhiBRow = ({ terms, totalW }) => (
+    <div>
+      <div style={{ fontSize: 10, color: "var(--accent)", fontFamily: "var(--mono)", marginBottom: 4 }}>{t.yearViewPhiB}</div>
+      <div style={{ display: "flex", gap: 1, borderRadius: 4, overflow: "hidden", height: 32 }}>
+        {terms.map((term, i) => {
+          const isAph = cal.aphTermNum === term.j;
+          const color = term.length < r.lo * 0.99 ? "#3b82f6" : term.length > r.lo * 1.01 ? "#f59e0b" : "#10b981";
+          return (
+            <div key={i} title={`${zh ? "节气" : "Term"} ${term.j}  ${zh ? "第" : "Day "}${term.dayStart ?? (Math.round(term.start) + 1)}`}
+              style={{ flex: term.length, background: color + "22", borderLeft: `2px solid ${color}`, display: "flex", alignItems: "center", justifyContent: "center", minWidth: 0, position: "relative" }}>
+              {isAph && <span style={{ fontSize: 8, color: "#f59e0b", fontFamily: "var(--mono)" }}>▲</span>}
+            </div>
+          );
+        })}
+      </div>
+      {/* 节气起始日刻度：每隔 N/8 个标一次，避免拥挤 */}
+      <div style={{ display: "flex", fontSize: 8, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 2, position: "relative", height: 12 }}>
+        {terms.filter((_, i) => i % Math.max(1, Math.round(terms.length / 8)) === 0).map((term, i) => (
+          <div key={i} style={{ position: "absolute", left: `${(term.dayStart ?? Math.round(term.start) + 1) / Y1 * 100}%`, transform: "translateX(-50%)" }}>
+            {zh ? `第${term.dayStart ?? Math.round(term.start) + 1}日` : `d${term.dayStart ?? Math.round(term.start) + 1}`}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (cal.type === "solar") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <PhiBRow terms={cal.terms} totalW={Y1} />
+        {cal.solarYears && (
+          <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)" }}>
+            {zh ? `远日点 ▲ 第${cal.aphTermNum}节气 · 闰日插于此` : `Aphelion ▲ Term ${cal.aphTermNum} · leap day inserted here`}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 阴阳合历：ΦA 月份层 + ΦB 节气层
+  const d1 = cal.year1detail;
+  if (!d1) return null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* ΦA 月份层 */}
+      <div>
+        <div style={{ fontSize: 10, color: "#10b981", fontFamily: "var(--mono)", marginBottom: 4 }}>{t.yearViewPhiA}</div>
+        <div style={{ display: "flex", gap: 1, borderRadius: 4, overflow: "hidden", height: 32 }}>
+          {d1.months.map((m, i) => (
+            <div key={i} title={`${m.isIntercalary ? (zh ? "闰月" : "Leap") : (zh ? `${m.num}月` : `M${m.num}`)}  ${zh ? "第" : "Day "}${m.dayStart}`}
+              style={{ flex: m.length, background: m.isIntercalary ? "#f59e0b22" : i % 2 === 0 ? "#10b98125" : "#10b98112", borderLeft: `2px solid ${m.isIntercalary ? "#f59e0b" : "#10b981"}`, display: "flex", alignItems: "center", justifyContent: "center", minWidth: 0 }}>
+              <span style={{ fontSize: 9, color: m.isIntercalary ? "#f59e0b" : "#10b981", fontFamily: "var(--mono)", overflow: "hidden" }}>
+                {m.isIntercalary ? (zh ? "闰" : "L") : m.num}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", fontSize: 8, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 2, position: "relative", height: 12 }}>
+          {d1.months.filter((_, i) => i % Math.max(1, Math.round(d1.months.length / 6)) === 0).map((m, i) => (
+            <div key={i} style={{ position: "absolute", left: `${m.dayStart / d1.totalDays * 100}%`, transform: "translateX(-50%)" }}>
+              {zh ? `第${m.dayStart}日` : `d${m.dayStart}`}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ΦB 节气层（用 year1detail.terms 的整数日定位） */}
+      <div>
+        <div style={{ fontSize: 10, color: "var(--accent)", fontFamily: "var(--mono)", marginBottom: 4 }}>{t.yearViewPhiB}</div>
+        <div style={{ display: "flex", gap: 1, borderRadius: 4, overflow: "hidden", height: 32, position: "relative" }}>
+          {d1.terms.map((term, i) => {
+            const nextDay = i + 1 < d1.terms.length ? d1.terms[i + 1].day : d1.totalDays + 1;
+            const len = nextDay - term.day;
+            const color = len < r.lo * 0.99 ? "#3b82f6" : len > r.lo * 1.01 ? "#f59e0b" : "#10b981";
+            const isAph = cal.aphTermNum === term.j;
+            return (
+              <div key={i} title={`${zh ? "节气" : "Term"} ${term.j}  ${zh ? "第" : "Day "}${term.day}`}
+                style={{ flex: len, background: color + "22", borderLeft: `2px solid ${color + (isAph ? "ff" : "88")}`, display: "flex", alignItems: "center", justifyContent: "center", minWidth: 0 }}>
+                {isAph && <span style={{ fontSize: 8, color: "#f59e0b" }}>▲</span>}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: "flex", fontSize: 8, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 2, position: "relative", height: 12 }}>
+          {d1.terms.filter((_, i) => i % Math.max(1, Math.round(d1.terms.length / 8)) === 0).map((term, i) => (
+            <div key={i} style={{ position: "absolute", left: `${(term.day - 1) / d1.totalDays * 100}%`, transform: "translateX(-50%)" }}>
+              {zh ? `第${term.day}日` : `d${term.day}`}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)", lineHeight: 1.7 }}>
+        {zh
+          ? `第1年 · ${d1.months.length}个月 · ${d1.totalDays}本地日 · N=${cal.N}节气`
+          : `Year 1 · ${d1.months.length} months · ${d1.totalDays} local days · N=${cal.N} terms`}
+        {cal.aphTermNum && <span style={{ color: "#f59e0b", marginLeft: 8 }}>{zh ? `▲ 远日点 第${cal.aphTermNum}节气` : `▲ aphelion term ${cal.aphTermNum}`}</span>}
+      </div>
+    </div>
+  );
 }
 
 // ── MAIN ──
@@ -591,6 +722,7 @@ export default function CustomCalculator({ lang }) {
   const [showReport, setShowReport] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showCal, setShowCal] = useState(false);
+  const [showYearView, setShowYearView] = useState(false);
   const t = L[lang];
   const r = compute(state);
   const reportText = showReport ? buildReport(state, r, t, lang) : "";
@@ -908,6 +1040,25 @@ export default function CustomCalculator({ lang }) {
             {showCal ? t.calendarHide : t.calendarShow}
           </button>
         </div>
+
+        {/* 年图按钮 */}
+        <div style={{ marginTop: 10, textAlign: "center" }}>
+          <button onClick={() => setShowYearView(v => !v)} style={{
+            background: showYearView ? "var(--accent)" : "var(--card)",
+            color: showYearView ? "#090b10" : "var(--accent)",
+            border: "1px solid var(--accent)", borderRadius: 10,
+            padding: "10px 28px", cursor: "pointer", fontFamily: "var(--body)",
+            fontSize: 14, fontWeight: 700, letterSpacing: 1, transition: "all 0.15s",
+          }}>
+            {showYearView ? "▲ " : "▼ "}{t.yearViewTitle}
+          </button>
+        </div>
+
+        {showYearView && (
+          <div style={{ marginTop: 16, background: "var(--card)", border: "1px solid #d4a84340", borderRadius: 14, padding: "20px 24px" }}>
+            <YearView cal={cal} r={r} lang={lang} t={t} />
+          </div>
+        )}
 
         {showCal && (
           <div style={{ marginTop: 16, background: "var(--card)", border: "1px solid #10b98140", borderRadius: 14, padding: "20px 24px" }}>
