@@ -665,15 +665,19 @@ function YearView({ cal, r, lang, t }) {
   );
 
   if (cal.type === "solar") {
-    const rows = cal.terms.map(term => {
+    const rows = cal.terms.map((term, i, arr) => {
       const isAph = cal.aphTermNum === term.j;
       const isFast = term.length < r.lo * 0.99;
       const isSlow = term.length > r.lo * 1.01;
+      // 相邻 dayStart 做差 → Bresenham 精度，总和保证等于 round(Y1)
+      const termDays = i < arr.length - 1
+        ? arr[i + 1].dayStart - term.dayStart
+        : Math.round(cal.Y1) + 1 - term.dayStart;
       return {
         label: zh ? `节气 ${term.j}` : `Term ${term.j}`,
         labelColor: isAph ? "#f59e0b" : "var(--dim2)",
         startDay: zh ? `第 ${term.dayStart} 日` : `Day ${term.dayStart}`,
-        days: Math.round(term.length),
+        days: termDays,
         highlight: isAph ? "#f59e0b" : isFast ? "#3b82f6" : isSlow ? "#f59e0b" : null,
         note: isAph ? (zh ? "← 闰日 · 远日点" : "← leap day · aphelion") : isFast ? (zh ? "近日点" : "perihelion") : isSlow ? (zh ? "远日点侧" : "aphelion side") : "",
       };
