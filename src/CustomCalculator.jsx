@@ -274,7 +274,7 @@ const PRESETS = {
     stars: [{ name: "Sun", mass: 1.0 }],
     // 1 木星日 = 9.93h = 0.41375 地球日；木星年 4332.6÷0.41375 = 10471 木星日
     Y1: 10471, localDay: 9.93, ecc: 0.0489, locked: false, N: 24,
-    sats: [{ name: "Io", Ti: 4.276 }, { name: "Europa", Ti: 8.583 }, { name: "Ganymede", Ti: 17.29 }, { name: "Callisto", Ti: 40.33 }],
+    sats: [{ name: "Io", Ti: 4.276 }, { name: "Europa", Ti: 8.583 }, { name: "Ganymede", Ti: 17.29 }, { name: "Callisto", Ti: 40.33 }, { name: "Himalia", Ti: 642.8 }],
     overlays: [], binaryPeriod: 0,
   },
   tatooine: {
