@@ -189,7 +189,7 @@ const SYSTEMS = [
     source: "NASA JPL Planetary Fact Sheets", m: 1, N: 24,
     stars: [{ name: "太阳 Sun", mass: 1.0 }],
     Y1: 365.25, localDay: 24.0, eccentricity: 0.0167, tidallyLocked: false,
-    satellites: [{ name: "月球 Moon", Ti: 29.5306 }],
+    satellites: [{ name: "月球 Moon", Ti: 29.5306, TiIsSynodic: true }],
     overlays: [{ name: "木星 Jupiter (岁星)", period_years: 11.862 }],
     notes_zh: "论文基线案例 (m=1, n=1)。月球满足甲型条件，木星提供乙型年度叠合。",
     notes_en: "Paper baseline case (m=1, n=1). Moon satisfies Mode A; Jupiter provides Mode B annual overlay.",
@@ -198,7 +198,7 @@ const SYSTEMS = [
     id: "mars", category: "太阳系验证基线", name: "火星 Mars", emoji: "🔴", distance: "0 ly",
     source: "NASA JPL", m: 1, N: 24, stars: [{ name: "太阳 Sun", mass: 1.0 }],
     Y1: 686.97, localDay: 24.66, eccentricity: 0.0934, tidallyLocked: false,
-    satellites: [{ name: "火卫一 Phobos", Ti: 0.319 }, { name: "火卫二 Deimos", Ti: 1.26 }],
+    satellites: [{ name: "火卫一 Phobos", Ti: 0.319, TiIsSynodic: false }, { name: "火卫二 Deimos", Ti: 1.26, TiIsSynodic: false }],
     overlays: [],
     notes_zh: "高离心率测试。两颗卫星均低于甲型下限，公式正确输出纯太阳历。",
     notes_en: "High-eccentricity test. Both satellites below Mode A threshold; formula correctly outputs pure solar calendar.",
@@ -208,8 +208,8 @@ const SYSTEMS = [
     source: "NASA JPL", m: 1, N: 24, stars: [{ name: "太阳 Sun", mass: 1.0 }],
     Y1: 4332.6, localDay: 9.93, eccentricity: 0.0489, tidallyLocked: false,
     satellites: [
-      { name: "木卫一 Io", Ti: 1.769 }, { name: "木卫二 Europa", Ti: 3.551 },
-      { name: "木卫三 Ganymede", Ti: 7.155 }, { name: "木卫四 Callisto", Ti: 16.689 },
+      { name: "木卫一 Io", Ti: 1.769, TiIsSynodic: false }, { name: "木卫二 Europa", Ti: 3.551, TiIsSynodic: false },
+      { name: "木卫三 Ganymede", Ti: 7.155, TiIsSynodic: false }, { name: "木卫四 Callisto", Ti: 16.689, TiIsSynodic: false },
     ],
     overlays: [],
     notes_zh: "多卫星乙型叠合测试。四颗伽利略卫星全部周期过快，输出太阳层+4条计数轨。",
@@ -272,7 +272,7 @@ const SYSTEMS = [
   },
   {
     id: "toi5624e", category: "系外行星：2026新发现", name: "TOI-5624 e", emoji: "⭐", distance: "331 ly",
-    source: "TESS, Bonfant et al. April 2026", m: 1, N: 24,
+    source: "TESS, Bonfils et al. April 2026", m: 1, N: 24,
     stars: [{ name: "TOI-5624 (Sun-like)", mass: 0.87 }],
     Y1: 21.49, localDay: 21.49 * 24, eccentricity: 0.0, tidallyLocked: true,
     satellites: [],
@@ -284,7 +284,7 @@ const SYSTEMS = [
     id: "bcentaurib", category: "系外行星：极端参数", name: "b Centauri (AB) b", emoji: "💫", distance: "325 ly",
     source: "ESO SPHERE VLT, Janson et al. 2021", m: 2, N: 24,
     stars: [{ name: "b Cen A (B3V, ~6M☉)", mass: 6.0 }, { name: "b Cen B (~4M☉)", mass: 4.0 }],
-    Y1: 7170 * 365.25, localDay: 10, eccentricity: 0.4, tidallyLocked: false,
+    Y1: 7170 * 365.25, localDay: 10, localDayAssumed: true, eccentricity: 0.4, tidallyLocked: false,
     satellites: [], overlays: [],
     notes_zh: "极端参数压力测试：超木星(10.9 MJ)绕双星运行，周期~7170年，离心率0.4。",
     notes_en: "Extreme parameter stress test: super-Jupiter (10.9 MJ) orbiting binary, period ~7,170 years, eccentricity 0.4.",
@@ -313,6 +313,10 @@ function bestRational(frac, maxDenom = 100) {
   return best;
 }
 
+// 恒星周期 → 朔望周期（相对宿主恒星的会合周期）
+// Tsid: 卫星绕行星的轨道周期(天); Y1: 行星年(天)
+const toSynodic = (Tsid, Y1) => 1 / (1 / Tsid - 1 / Y1);
+
 // ── FORMULA ENGINE ──
 function classify(Ti, Y1, localDayHours, lang, N) {
   const t = T[lang];
@@ -336,8 +340,9 @@ function analyze(sys, lang) {
   const shichen = shichenValid ? sys.localDay / 12 : null;
 
   const sats = sys.satellites.map((s) => {
-    const cls = classify(s.Ti, sys.Y1, sys.localDay, lang, sys.N);
-    return { ...s, ...cls, cyclesPerYear: sys.Y1 / s.Ti, ratioZ: s.Ti / Z };
+    const Tsyn = s.TiIsSynodic ? s.Ti : toSynodic(s.Ti, sys.Y1);
+    const cls = classify(Tsyn, sys.Y1, sys.localDay, lang, sys.N);
+    return { ...s, ...cls, Ti: Tsyn, Ti_sidereal: s.Ti, cyclesPerYear: sys.Y1 / Tsyn, ratioZ: Tsyn / Z };
   });
 
   const modeA = sats.filter((s) => s.color === "#10b981");
@@ -414,7 +419,7 @@ function Detail({ sys, lang }) {
           <Cell label={t.zhongqiInterval} value={`${a.Z.toFixed(4)} ${t.days}`} />
           <Cell label={t.modeARange} value={`${a.lo.toFixed(3)} – ${a.hi.toFixed(3)}`} sub={t.earthDays} />
           <Cell label={t.eccentricity} value={sys.eccentricity} />
-          <Cell label={t.localDay} value={sys.localDay < 48 ? `${sys.localDay.toFixed(2)} ${t.hours}` : `${(sys.localDay/24).toFixed(1)} ${t.days}`} />
+          <Cell label={t.localDay} value={sys.localDay < 48 ? `${sys.localDay.toFixed(2)} ${t.hours}` : `${(sys.localDay/24).toFixed(1)} ${t.days}`} sub={sys.localDayAssumed ? (lang === "zh" ? "假设值 / assumed" : "assumed value") : null} />
           <Cell label={t.shichen} value={a.shichenValid ? `${a.shichen.toFixed(2)} ${t.hours}` : a.isLocked ? t.undefinedLocked : t.degenerate} />
           {sys.m >= 2 && sys.binaryPeriod && <Cell label={t.binaryPeriod} value={`${sys.binaryPeriod.toFixed(2)} ${t.days}`} sub={t.overlaySource} />}
           <Cell label="N" value={sys.N} sub={

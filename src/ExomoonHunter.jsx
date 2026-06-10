@@ -12,6 +12,10 @@ function bestRational(frac, maxDenom = 100) {
   return best;
 }
 
+// 恒星周期 → 朔望周期（相对宿主恒星的会合周期）
+// Tsid: 卫星绕行星的轨道周期(天); Y1: 行星年(天)
+const toSynodic = (Tsid, Y1) => 1 / (1 / Tsid - 1 / Y1);
+
 const T = {
   zh: {
     header: "华夏历 · 甲型系外卫星猎手",
@@ -43,7 +47,7 @@ const T = {
     conclusion2: "目前仅地球月球是唯一已确认的甲型实例，但部分候选体的不确定性范围与甲型区间有交集。随着JWST和VLTI/GRAVITY+的观测精度提升，未来可能发现更多甲型实例。",
     conclusion3: "目前仅地球月球是唯一已知的甲型实例。",
     conclusionNote: "需要注意：截至2026年，尚无任何系外卫星被正式确认。上述候选体均需进一步验证。但公式的价值在于——它提前给出了判定标准：只要 Y₁/N ≤ Tᵢ < 2Y₁/N，置闰自动成立，无需重新设计。标准在那里等着数据。",
-    footer1: "数据来源：Teachey & Kipping 2018 · Kipping 2022 · Kral et al. 2026 · NASA Kepler/HST · ESO VLTI/GRAVITY",
+    footer1: "数据来源：Teachey & Kipping 2018 (Science Advances) · Kipping et al. 2022 (Nature Astronomy) · Kral et al. 2026 (A&A) · NASA Kepler/HST · ESO VLTI/GRAVITY+",
     footer2: "分析框架：贾润章《华夏历》2026 · §4 甲型条件 Y₁/N ≤ Tᵢ < 2Y₁/N · N 优先从 Y₁/Tᵢ 推导；无合适卫星时 N=24 为约定默认值",
     orbitLabel: "绕",
     planetYear: "行星年",
@@ -98,7 +102,7 @@ const T = {
     conclusion2: "Earth's Moon remains the only confirmed Mode A instance, but some candidates' uncertainty ranges overlap with the Mode A interval. Improved JWST and VLTI/GRAVITY+ precision may reveal more instances.",
     conclusion3: "Earth's Moon is currently the only known Mode A instance.",
     conclusionNote: "Note: As of 2026, no exomoon has been officially confirmed. All candidates require further verification. The formula's value lies in providing the criterion in advance: whenever Y₁/N ≤ Tᵢ < 2Y₁/N, intercalation is automatic. The standard awaits the data.",
-    footer1: "Data: Teachey & Kipping 2018 · Kipping 2022 · Kral et al. 2026 · NASA Kepler/HST · ESO VLTI/GRAVITY",
+    footer1: "Data: Teachey & Kipping 2018 (Science Advances) · Kipping et al. 2022 (Nature Astronomy) · Kral et al. 2026 (A&A) · NASA Kepler/HST · ESO VLTI/GRAVITY+",
     footer2: "Framework: Jia Runzhang, Huaxia Li (2026) · §4 Mode A condition Y₁/N ≤ Tᵢ < 2Y₁/N · N derives from Y₁/Tᵢ when satellite present; N=24 is conventional default when absent",
     orbitLabel: "orbiting",
     planetYear: "Planet Year",
@@ -140,13 +144,15 @@ const CANDIDATES = [
     Y1: 287.38, // planet orbital period = stellar year
     moonName: "Kepler-1625 b I (候选)",
     moonDesc: "海王星大小，~16 M⊕，距行星约40行星半径",
-    Ti_est: 19, // estimated orbital period around planet ~19 days (Grokipedia/Kipping)
-    Ti_range: [13, 39], // range from CNN paper
+    Ti_est: 19, // Teachey & Kipping 2018, Science Advances 4(10): eaav1784, DOI: 10.1126/sciadv.aav1784 — 卫星周期约束宽松, 中心估计 ~19 d (恒星周期)
+    Ti_range: [13, 39], // 复核: Kipping et al. 2022, Nature Astronomy, DOI: 10.1038/s41550-021-01539-1
+    TiIsSynodic: false,
     confirmed: false,
     status: "争议中",
     statusDetail: "2018年Teachey & Kipping (HST)发现证据，2019年Kreidberg等独立分析未确认，2023年Heller等认为可能是假阳性。截至2025年仍未确认。",
     source: "Teachey & Kipping 2018 (Science Advances), Kipping 2022",
     localDay: 10, // gas giant, assume fast rotation ~10h
+    localDayAssumed: true,
   },
   {
     id: "kepler1708b", N: 24,
@@ -159,11 +165,13 @@ const CANDIDATES = [
     moonDesc: "约2.6倍地球半径，距行星约12行星半径",
     Ti_est: 4.6, // roughly estimated from orbital distance
     Ti_range: [2, 10], // approximate range
+    TiIsSynodic: false,
     confirmed: false,
     status: "争议中",
     statusDetail: "2022年Kipping等发现，2023年Heller & Hippke重新分析认为不太可能存在。",
     source: "Kipping et al. 2022 (Nature Astronomy)",
     localDay: 10,
+    localDayAssumed: true,
   },
   {
     id: "hd206893b", N: 24,
@@ -176,11 +184,13 @@ const CANDIDATES = [
     moonDesc: "极大质量，~0.4 MJ (≈9倍海王星质量)，距宿主约0.22 AU",
     Ti_est: 0.76 * 365.25, // ~0.76 years = ~277.6 days
     Ti_range: [200, 350], // approximate
+    TiIsSynodic: false,
     confirmed: false,
     status: "初步信号",
     statusDetail: "2026年1月巴黎天文台Kral等使用VLTI/GRAVITY天体测量首次检测。信号显示~9个月周期的天体测量摆动。尚需进一步验证。",
     source: "Kral et al. 2026 (A&A), VLTI/GRAVITY",
     localDay: 10,
+    localDayAssumed: true,
   },
   // ── Hypothetical Earth-analogue for comparison ──
   {
@@ -194,6 +204,7 @@ const CANDIDATES = [
     moonDesc: "0.0123 M⊕, 距地球60.3地球半径",
     Ti_est: 29.5306,
     Ti_range: [29.53, 29.53],
+    TiIsSynodic: true,
     confirmed: true,
     status: "已确认",
     statusDetail: "唯一已知的甲型实例。Tᵢ/Z = 97%，位于甲型范围上界附近。",
@@ -208,26 +219,22 @@ function analyzeCandidate(c) {
   const hi = Z;
   const localDayDays = c.localDay / 24;
 
-  // Check Ti_est
-  const inModeA = c.Ti_est >= lo && c.Ti_est < hi;
-  const tooFast = c.Ti_est < lo;
-  const belowDay = c.Ti_est < localDayDays;
-  const ratioZ = c.Ti_est / Z;
+  const Tsyn = c.TiIsSynodic ? c.Ti_est : toSynodic(c.Ti_est, c.Y1);
+  const TsynRange = c.Ti_range.map(t => c.TiIsSynodic ? t : toSynodic(t, c.Y1));
 
-  // Check range
-  const rangeOverlapsA = c.Ti_range[0] < hi && c.Ti_range[1] >= lo;
-
-  // How close to ideal?
-  // Ideal is Ti/Z close to 1 (like Earth's Moon at 97%)
+  const inModeA = Tsyn >= lo && Tsyn < hi;
+  const tooFast = Tsyn < lo;
+  const belowDay = Tsyn < localDayDays;
+  const ratioZ = Tsyn / Z;
+  const rangeOverlapsA = TsynRange[0] < hi && TsynRange[1] >= lo;
   const idealness = ratioZ;
 
-  // 岁余：宿主行星本地日的余分 → 置闰日周期
   const daysPerYear = c.localDay > 0 ? c.Y1 / (c.localDay / 24) : null;
   const fracDay = daysPerYear !== null ? daysPerYear - Math.floor(daysPerYear) : null;
   const leapDay = (fracDay !== null && fracDay > 0.002 && fracDay < 0.998)
     ? { ...bestRational(fracDay), daysPerYear } : null;
 
-  return { Z, lo, hi, inModeA, tooFast, belowDay, ratioZ, rangeOverlapsA, idealness, leapDay };
+  return { Z, lo, hi, inModeA, tooFast, belowDay, ratioZ, rangeOverlapsA, idealness, leapDay, Tsyn, TsynRange };
 }
 
 function Gauge({ value, lo, hi, max, label }) {
@@ -314,9 +321,9 @@ function CandidateCard({ c, t, lang }) {
           [`Y₁ ${t.planetYear}`, c.Y1 > 1000 ? `${(c.Y1/365.25).toFixed(1)} ${t.earthYears}` : `${c.Y1.toFixed(2)} ${t.days}`],
           [t.zhongqi, `${a.Z.toFixed(2)} ${t.days}`],
           [t.modeARange, `${a.lo.toFixed(1)}–${a.hi.toFixed(1)} ${t.days}`],
-          [t.tiEst, `${c.Ti_est.toFixed(1)} ${t.days}`],
+          [t.tiEst, `${a.Tsyn.toFixed(2)} ${t.days}`],
           [t.tiRatio, `${(a.ratioZ * 100).toFixed(1)}%`],
-          [t.tiRange, `${c.Ti_range[0]}–${c.Ti_range[1]} ${t.days}`],
+          [t.tiRange, `${a.TsynRange[0].toFixed(1)}–${a.TsynRange[1].toFixed(1)} ${t.days}`],
         ].map(([label, val], i) => (
           <div key={i} style={{ background: "var(--cell)", borderRadius: 8, padding: "7px 11px" }}>
             <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)" }}>{label}</div>
@@ -327,7 +334,7 @@ function CandidateCard({ c, t, lang }) {
 
       {/* Visual gauge */}
       <div style={{ padding: "8px 0 24px" }}>
-        <Gauge value={c.Ti_est} lo={a.lo} hi={a.hi} max={a.hi * 1.5} label={t.gaugeLabel} />
+        <Gauge value={a.Tsyn} lo={a.lo} hi={a.hi} max={a.hi * 1.5} label={t.gaugeLabel} />
       </div>
 
       {/* Analysis */}
@@ -342,18 +349,18 @@ function CandidateCard({ c, t, lang }) {
         <div style={{ fontSize: 12, color: "var(--dim2)", lineHeight: 1.7 }}>
           {isModeA ? (
             <>
-              {t.analysisSatPeriod(c.Ti_est.toFixed(1), a.lo.toFixed(1), a.hi.toFixed(1), (a.ratioZ*100).toFixed(1))}
+              {t.analysisSatPeriod(a.Tsyn.toFixed(2), a.lo.toFixed(1), a.hi.toFixed(1), (a.ratioZ*100).toFixed(1))}
               {a.ratioZ > 0.9 && a.ratioZ < 1.0 && t.analysisNearZ}
               {a.ratioZ < 0.9 && a.ratioZ >= 0.5 && t.analysisMidRange}
               {c.Y1 > 200 && c.Y1 < 400 && t.analysisEarthLike(c.Y1.toFixed(1))}
             </>
           ) : a.rangeOverlapsA ? (
             <>
-              {t.analysisMaybeText(c.Ti_est.toFixed(1), a.tooFast ? t.dirBelow : t.dirAbove, c.Ti_range[0], c.Ti_range[1], a.lo.toFixed(1), a.hi.toFixed(1))}
+              {t.analysisMaybeText(a.Tsyn.toFixed(2), a.tooFast ? t.dirBelow : t.dirAbove, a.TsynRange[0].toFixed(1), a.TsynRange[1].toFixed(1), a.lo.toFixed(1), a.hi.toFixed(1))}
             </>
           ) : (
             <>
-              {t.analysisPeriodNotA(c.Ti_est.toFixed(1), a.tooFast ? t.analysisBelowLo(a.lo.toFixed(1)) : t.analysisAboveHi(a.hi.toFixed(1)))}
+              {t.analysisPeriodNotA(a.Tsyn.toFixed(2), a.tooFast ? t.analysisBelowLo(a.lo.toFixed(1)) : t.analysisAboveHi(a.hi.toFixed(1)))}
               {a.tooFast && t.analysisModeB}
             </>
           )}
@@ -366,12 +373,12 @@ function CandidateCard({ c, t, lang }) {
           <div style={{ fontSize: 12, color: "#10b981", fontFamily: "var(--mono)", fontWeight: 600, marginBottom: 6 }}>{t.intercalaryTitle}</div>
           <div style={{ fontSize: 12, fontFamily: "var(--mono)", color: "var(--fg)", lineHeight: 1.9 }}>
             {(() => {
-              const mpy = c.Y1 / c.Ti_est;
+              const mpy = c.Y1 / a.Tsyn;
               const frac = mpy - Math.floor(mpy);
               const interval = frac > 0 ? 1 / frac : Infinity;
               return (
                 <>
-                  <div>Y₁/Tᵢ = {c.Y1.toFixed(2)} / {c.Ti_est.toFixed(1)} = <b>{mpy.toFixed(4)}</b> {t.monthsPerYear}</div>
+                  <div>Y₁/Tᵢ = {c.Y1.toFixed(2)} / {a.Tsyn.toFixed(2)} = <b>{mpy.toFixed(4)}</b> {t.monthsPerYear}</div>
                   <div>{t.intMonths} = {Math.floor(mpy)} · {t.fraction} = {frac.toFixed(4)}</div>
                   <div>{t.leapFreq} <b>{interval.toFixed(2)}</b> {c.host.includes("地球") ? t.years : t.localYears} · {t.leapMonth}</div>
                   {(() => { const br = bestRational(frac); return <div style={{ color: "var(--dim2)", marginTop: 4 }}>{t.zhangVerify(br.p, br.q)} {(br.p/br.q).toFixed(5)} vs {frac.toFixed(5)} → {t.error} {(Math.abs(br.p/br.q - frac)/frac*100).toFixed(3)}%</div>; })()}
@@ -388,6 +395,7 @@ function CandidateCard({ c, t, lang }) {
           <span style={{ color: "#f59e0b", fontWeight: 600 }}>{t.leapDayTitle}：</span>
           <span style={{ color: "var(--dim2)" }}>{a.leapDay.p}/{a.leapDay.q} → </span>
           <span style={{ color: "var(--fg)" }}>{t.leapDayCycle(a.leapDay.p, a.leapDay.q)}</span>
+          {c.localDayAssumed && <span style={{ fontSize: 10, color: "var(--dim)", marginLeft: 8, fontFamily: "var(--mono)" }}>{lang === "zh" ? "(本地日=10h，假设值)" : "(local day=10h, assumed)"}</span>}
         </div>
       )}
 
