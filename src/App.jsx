@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import CrossVerification from "./CrossVerification.jsx";
 import ExomoonHunter from "./ExomoonHunter.jsx";
 import CustomCalculator from "./CustomCalculator.jsx";
+import AphSim from "./AphSim.jsx";
 
 const NAV = {
   zh: {
@@ -9,6 +10,7 @@ const NAV = {
     cross: "跨星系验证",
     exomoon: "甲型猎手",
     calc: "自定义验算",
+    annex: "数值验证",
     lang: "EN",
     heroTitle: "华夏历",
     heroSub: "通用行星公式",
@@ -36,6 +38,7 @@ const NAV = {
     cross: "Cross-System",
     exomoon: "Mode A Hunter",
     calc: "Custom Calc",
+    annex: "Numerics",
     lang: "中文",
     heroTitle: "华夏历",
     heroSub: "Universal Planetary Formula",
@@ -202,6 +205,7 @@ export default function App() {
     { key: "cross", label: t.cross },
     { key: "exomoon", label: t.exomoon },
     { key: "calc", label: t.calc },
+    { key: "annex", label: t.annex },
   ];
 
   return (
@@ -235,6 +239,7 @@ export default function App() {
         {page === "cross" && <CrossVerification lang={lang} />}
         {page === "exomoon" && <ExomoonHunter lang={lang} />}
         {page === "calc" && <CustomCalculator lang={lang} />}
+        {page === "annex" && <AphSim lang={lang} />}
       </div>
     </div>
   );
