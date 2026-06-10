@@ -1,171 +1,203 @@
 """
-Kepler-equation aphelion clustering simulation.
-Verifies: ~50% of no-Zhongqi months fall in the leap-4/5/6 window;
-Winter Solstice month has 0 intercalary insertions over 400 years.
+Aphelion clustering simulation — aligned with 大哥 independent reference.
+Uses anomalistic year, sun-longitude Zhongqi, equation-of-center to e³.
+Verifies: ~50% of no-Zhongqi months fall in the aphelion half-year;
+Winter Solstice month has ~0 intercalary insertions over 400 years.
 
 Jia Runzhang (2026). 华夏历 — §6 aphelion intercalary clustering.
 No external dependencies. Run: python3 aphelion_sim.py
 """
 
 import math
+from collections import Counter
 
-# ── Kepler equation solver ─────────────────────────────────────────────────────
-def mean_to_eccentric(M, ecc, tol=1e-10):
-    E = M
-    for _ in range(200):
-        dE = (M - E + ecc * math.sin(E)) / (1 - ecc * math.cos(E))
-        E += dE
-        if abs(dE) < tol:
-            break
-    return E
+# ── Earth orbital parameters ──────────────────────────────────────────────────
+Y_ANOM   = 365.2596    # anomalistic year (perihelion→perihelion), days
+Y_TROP   = 365.2422    # tropical year (VE→VE), days; Z and sim bounds use this
+T_SYN    = 29.530589   # Moon synodic period, days
+N        = 24
+Z        = 2 * Y_TROP / N   # Zhongqi interval ≈ 30.44 d
+ecc      = 0.0167
+PERI_LON = 282.95       # ecliptic longitude of perihelion (°), from vernal equinox
 
-def time_to_true_anomaly(t, Y1, ecc):
-    """Convert time t (days) to true anomaly (radians, 0=perihelion)."""
-    M = 2 * math.pi * t / Y1
-    E = mean_to_eccentric(M, ecc)
-    nu = 2 * math.atan2(
-        math.sqrt(1 + ecc) * math.sin(E / 2),
-        math.sqrt(1 - ecc) * math.cos(E / 2)
-    )
-    return nu % (2 * math.pi)
+# ── Equation-of-center to e³: mean anomaly → ecliptic longitude ───────────────
+def sun_lon(t):
+    """
+    Ecliptic longitude of Sun (° from vernal equinox) at t days from perihelion.
+    Equation-of-center series expanded to third order in eccentricity.
+    """
+    M  = 2 * math.pi * t / Y_ANOM
+    e  = ecc
+    nu = (M
+          + (2*e - e**3/4) * math.sin(M)
+          + (5*e**2/4)      * math.sin(2*M)
+          + (13*e**3/12)    * math.sin(3*M))
+    return (math.degrees(nu) + PERI_LON) % 360.0
 
-# ── Earth parameters ──────────────────────────────────────────────────────────
-Y1   = 365.25          # days
-Ti   = 29.5306         # Moon synodic period
-N    = 24
-ecc  = 0.0167
-Z    = 2 * Y1 / N      # Zhongqi interval ~30.44 d
+# ── Bisection: find time near t_approx when sun crosses lon_target ────────────
+def time_of_sun_lon(lon_target, t_approx, half_width=None):
+    """Return time near t_approx when sun_lon crosses lon_target (degrees)."""
+    if half_width is None:
+        half_width = Z * 0.6
+    t_lo, t_hi = t_approx - half_width, t_approx + half_width
 
-# perihelion longitude for Earth (winter in NH = ~Jan 3 = ~280° from vernal equinox)
-# For simplicity we define t=0 at perihelion; vernal equinox is at ~80 days after perihelion
-VERNAL_EQUINOX_DAYS = 79.0   # approx days from perihelion to vernal equinox
+    def diff(t):
+        d = (sun_lon(t) - lon_target) % 360.0
+        return d - 360.0 if d > 180.0 else d
 
-def zhongqi_times(year_start, n_halfN):
-    """Return times of Zhongqi events for `n_halfN` half-N intervals starting at year_start."""
-    halfN = N // 2  # 12 Zhongqi per year
-    times = []
-    for j in range(n_halfN + 1):
-        yr  = j // halfN
-        k   = j % halfN
-        t0  = year_start + yr * Y1
-        if k == 0:
-            times.append(t0)
+    for _ in range(80):
+        t_mid = (t_lo + t_hi) / 2
+        if diff(t_mid) > 0:
+            t_hi = t_mid
         else:
-            # find time when true anomaly = 2*pi/N * (2*k) from this year's perihelion
-            target_nu = (2 * math.pi / N) * (2 * k)
-            # solve: time such that true_anomaly(t - yr*Y1) = target_nu
-            # do simple bisection
-            t_lo, t_hi = t0, t0 + Y1
-            for _ in range(60):
-                t_mid = (t_lo + t_hi) / 2
-                nu_mid = time_to_true_anomaly(t_mid - (year_start + yr * Y1), Y1, ecc)
-                if nu_mid < target_nu:
-                    t_lo = t_mid
-                else:
-                    t_hi = t_mid
-            times.append((t_lo + t_hi) / 2)
+            t_lo = t_mid
+    return (t_lo + t_hi) / 2
+
+# ── Generate all Zhongqi crossing times ──────────────────────────────────────
+def generate_zhongqi(n_years):
+    """
+    Return list of times (days from t=0 = perihelion) when Sun crosses
+    each 30° multiple of ecliptic longitude (12 Zhongqi per tropical year).
+    """
+    # First Zhongqi after t=0: sun starts at PERI_LON=282.95°, next 30° boundary
+    first_lon = (math.ceil(PERI_LON / 30.0) * 30.0) % 360.0
+    d_lon     = (first_lon - PERI_LON) % 360.0
+    t_approx  = d_lon / 360.0 * Y_TROP
+
+    cur_lon = first_lon
+    cur_t   = time_of_sun_lon(cur_lon, t_approx)
+    times   = [cur_t]
+
+    for _ in range(1, 12 * (n_years + 3)):
+        cur_lon = (cur_lon + 30.0) % 360.0
+        cur_t   = time_of_sun_lon(cur_lon, cur_t + Z)
+        times.append(cur_t)
+
     return times
+
+# ── Zhongqi labels by ecliptic longitude ─────────────────────────────────────
+ZQ_NAMES = {
+      0: ("春分",  "Vernal Equinox"),
+     30: ("谷雨",  "Grain Rain"),
+     60: ("小满",  "Grain Buds"),
+     90: ("夏至",  "Summer Solstice"),
+    120: ("大暑",  "Great Heat"),
+    150: ("处暑",  "End of Heat"),
+    180: ("秋分",  "Autumnal Equinox"),
+    210: ("霜降",  "Frost's Descent"),
+    240: ("小雪",  "Minor Snow"),
+    270: ("冬至",  "Winter Solstice"),
+    300: ("大寒",  "Major Cold"),
+    330: ("雨水",  "Rain Water"),
+}
 
 # ── Simulation ────────────────────────────────────────────────────────────────
 N_YEARS  = 400
-N_PHASES = 12   # different initial lunar phases (0 to Ti)
+N_PHASES = 12   # different initial lunar phases (0 to T_SYN)
 
-intercalary_months = []  # list of (true_anomaly_at_month_start, month_num_label)
+intercalary_months = []   # (sun_lon_deg_at_month_start, preceding_regular_month_num)
+
+zhongqi = generate_zhongqi(N_YEARS)
 
 for phase_idx in range(N_PHASES):
-    phase_offset = phase_idx * Ti / N_PHASES
+    phase_offset = phase_idx * T_SYN / N_PHASES
 
-    # Generate all Zhongqi times over N_YEARS + 2 buffer years
-    total_halfN = (N_YEARS + 4) * (N // 2)
-    zq = zhongqi_times(0.0, total_halfN)
-
-    # Generate all month boundaries
     month_starts = []
     k = 0
     while True:
-        t = phase_offset + k * Ti
-        if t > (N_YEARS + 2) * Y1:
+        t = phase_offset + k * T_SYN
+        if t > (N_YEARS + 2) * Y_TROP:
             break
         month_starts.append(t)
         k += 1
 
-    # Sweep: build calendar years, label intercalary months
-    zq_cursor = 0
+    zq_cursor   = 0
     year_months = []
     zq_in_year  = 0
-    halfN = N // 2
+    halfN = N // 2   # 12 Zhongqi per year
 
     for i, ms in enumerate(month_starts[:-1]):
         me = month_starts[i + 1]
-        # count Zhongqi in [ms, me)
-        while zq_cursor < len(zq) and zq[zq_cursor] < ms:
+        while zq_cursor < len(zhongqi) and zhongqi[zq_cursor] < ms:
             zq_cursor += 1
-        cnt = 0
-        tmp = zq_cursor
-        while tmp < len(zq) and zq[tmp] < me:
-            cnt += 1
-            tmp += 1
+        cnt, tmp = 0, zq_cursor
+        while tmp < len(zhongqi) and zhongqi[tmp] < me:
+            cnt += 1; tmp += 1
         is_intercalary = (cnt == 0)
         zq_in_year += cnt
         year_months.append((ms, is_intercalary))
 
         if zq_in_year >= halfN:
-            # label regular months 1..12 and intercalary
-            reg = 0
-            prev_reg = 0
+            reg, prev_reg = 0, 0
             for (t_m, is_int) in year_months:
                 if not is_int:
-                    reg += 1
-                    prev_reg = reg
-                else:
-                    # intercalary after prev_reg
-                    if 0 < t_m < N_YEARS * Y1:
-                        nu = time_to_true_anomaly(t_m % Y1, Y1, ecc)
-                        intercalary_months.append((nu, prev_reg))
+                    reg += 1; prev_reg = reg
+                elif 0 < t_m < N_YEARS * Y_TROP:
+                    lon = sun_lon(t_m % Y_ANOM)
+                    intercalary_months.append((lon, prev_reg))
             year_months = []
             zq_in_year  = 0
 
 total = len(intercalary_months)
 
 # ── Analysis ──────────────────────────────────────────────────────────────────
-def sep(c="-", n=60):
+def sep(c="-", n=64):
     print(c * n)
 
 sep("=")
 print("  APHELION CLUSTERING SIMULATION (400 yr × 12 phases)")
+print(f"  Y_ANOM={Y_ANOM}d  T_SYN={T_SYN}d  e={ecc}  PERI_LON={PERI_LON}°")
 sep("=")
 print(f"  Total intercalary months recorded: {total}")
 print()
 
-# By month label
-from collections import Counter
+# By preceding month label
 by_month = Counter(m for _, m in intercalary_months)
-print("  Intercalary count by month number:")
+mx = max(by_month.values(), default=1)
+print("  Intercalary count by preceding month number:")
 for mn in range(0, 13):
-    count = by_month.get(mn, 0)
-    bar = "█" * (count * 40 // max(by_month.values(), default=1))
-    print(f"  Leap {mn:2d}: {count:5d}  {bar}")
+    c   = by_month.get(mn, 0)
+    bar = "█" * (c * 40 // mx)
+    print(f"  Leap {mn:2d}: {c:5d}  {bar}")
 
 sep()
-# Aphelion window: true anomaly ~ pi (180°) ± 60° = [120°, 240°]
-# Corresponds roughly to months 4-6 in NH calendar (perihelion in January)
-aph_lo = math.pi - math.pi / 3   # 120°
-aph_hi = math.pi + math.pi / 3   # 240°
-in_aph = sum(1 for (nu, _) in intercalary_months if aph_lo <= nu <= aph_hi)
-pct_aph = in_aph / total * 100 if total > 0 else 0
 
-print(f"\n  Aphelion window [120°, 240°] from perihelion:")
-print(f"  Intercalary months in window: {in_aph} / {total} = {pct_aph:.1f}%")
-print(f"  (Expected ~50% — paper §6 claim)")
+# By 30° sun-longitude bin
+by_lon = Counter(int(lon / 30) * 30 for (lon, _) in intercalary_months)
+mx2    = max(by_lon.values(), default=1)
+print("\n  Intercalary count by sun longitude at month start (30° bins):")
+for lb in range(0, 360, 30):
+    zh, en = ZQ_NAMES[lb]
+    c   = by_lon.get(lb, 0)
+    bar = "█" * (c * 40 // mx2)
+    print(f"  {lb:3d}° {zh} ({en[:20]:20s}): {c:5d}  {bar}")
 
-# Winter Solstice month (month 11 in traditional Chinese calendar)
-# Defined as the month containing Winter Solstice = month starting near nu=270° from VE
-# In our sim, perihelion=0; WS is at ~280° from VE = ~360°-(VERNAL_EQUINOX_DAYS/Y1)*360°
-ws_nu = 2 * math.pi * (1 - VERNAL_EQUINOX_DAYS / Y1)  # ~282° in radians
-ws_label = by_month.get(11, 0)
-print(f"\n  Intercalary months labeled 'Leap 11' (after month 11): {ws_label}")
-print(f"  Intercalary months labeled 'Leap 12': {by_month.get(12, 0)}")
-print(f"  (Both near Winter Solstice — paper claims ~0 over 400 years)")
+sep()
+
+# Aphelion half-year window
+# Earth aphelion ≈ PERI_LON + 180° = 102.95° from vernal equinox
+aph_lon = (PERI_LON + 180.0) % 360.0   # ≈ 102.95°
+aph_lo  = (aph_lon  -  90.0) % 360.0   # ≈  12.95°
+aph_hi  = (aph_lon  +  90.0) % 360.0   # ≈ 192.95°
+
+def in_aph(lon):
+    return (aph_lo <= lon < aph_hi) if aph_lo < aph_hi else (lon >= aph_lo or lon < aph_hi)
+
+n_aph = sum(1 for (lon, _) in intercalary_months if in_aph(lon))
+pct   = n_aph / total * 100 if total else 0
+print(f"\n  Aphelion lon ≈ {aph_lon:.1f}°; half-year window [{aph_lo:.1f}°, {aph_hi:.1f}°):")
+print(f"  In aphelion half: {n_aph} / {total} = {pct:.1f}%  (paper §6: ~50%)")
+
+# Leap 4–6 (NH summer — months with highest aphelion overlap)
+n46 = sum(1 for (_, m) in intercalary_months if 4 <= m <= 6)
+p46 = n46 / total * 100 if total else 0
+print(f"\n  Leap months 4/5/6 (NH summer): {n46} / {total} = {p46:.1f}%  (paper §6: ~50%)")
+
+# Near Winter Solstice
+ws11 = by_month.get(11, 0)
+ws12 = by_month.get(12, 0)
+print(f"\n  Leap 11: {ws11}   Leap 12: {ws12}")
+print(f"  (Near Winter Solstice month — paper claims ~0 over 400 years)")
 
 sep("=")
 print("  Simulation complete.")
