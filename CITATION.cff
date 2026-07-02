@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use these tools or the verification scripts, please cite both the software and the paper."
+type: software
+title: "Huaxia-Li: Universal Planetary Formula — Interactive Verification Tools"
+authors:
+  - family-names: "Jia"
+    given-names: "Runzhang"
+repository-code: "https://github.com/rjialondon/Huaxia-Li"
+url: "https://rjialondon.github.io/Huaxia-Li/"
+license: Apache-2.0
+keywords:
+  - Huaxia calendar
+  - Chinese calendar
+  - lunisolar calendar
+  - planetary timekeeping
+  - intercalation
+  - exoplanet
+  - Mars calendar
+preferred-citation:
+  type: article
+  title: "The Huaxia Li (华夏历): A Misclassified Planetary Timekeeping Methodology and Its Architectural Relevance to Self-Sovereign Computing Systems"
+  authors:
+    - family-names: "Jia"
+      given-names: "Runzhang"
+  year: 2026
+  doi: "10.5281/zenodo.19571784"
+  url: "https://doi.org/10.5281/zenodo.19571784"

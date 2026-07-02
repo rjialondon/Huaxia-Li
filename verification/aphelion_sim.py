@@ -24,16 +24,27 @@ PERI_LON = 282.95       # ecliptic longitude of perihelion (°), from vernal equ
 # ── Equation-of-center to e³: mean anomaly → ecliptic longitude ───────────────
 def sun_lon(t):
     """
-    Ecliptic longitude of Sun (° from vernal equinox) at t days from perihelion.
-    Equation-of-center series expanded to third order in eccentricity.
+    Apparent-model ecliptic longitude of Sun (° from vernal equinox of date)
+    at t days from perihelion.
+
+    Two-track decomposition (岁差-correct): the mean longitude advances at the
+    TROPICAL rate (returns to the same equinox-referenced longitude in Y_TROP),
+    while the mean anomaly — argument of the equation of center — advances at
+    the ANOMALISTIC rate. Their difference (~61.9″/yr) is the drift of the
+    perihelion relative to the equinox of date; conflating the two years
+    accumulates ~25 min/yr of longitude-timing error (verified against JPL
+    DE421 in ephemeris_check.py).
+
+        λ(t) = PERI_LON + 360°·t/Y_TROP + C(M),   M = 2π·t/Y_ANOM
+
+    Equation of center C expanded to third order in eccentricity.
     """
-    M  = 2 * math.pi * t / Y_ANOM
-    e  = ecc
-    nu = (M
-          + (2*e - e**3/4) * math.sin(M)
-          + (5*e**2/4)      * math.sin(2*M)
-          + (13*e**3/12)    * math.sin(3*M))
-    return (math.degrees(nu) + PERI_LON) % 360.0
+    M = 2 * math.pi * t / Y_ANOM
+    e = ecc
+    C = ((2*e - e**3/4) * math.sin(M)
+         + (5*e**2/4)    * math.sin(2*M)
+         + (13*e**3/12)  * math.sin(3*M))
+    return (PERI_LON + 360.0 * t / Y_TROP + math.degrees(C)) % 360.0
 
 # ── Bisection: find time near t_approx when sun crosses lon_target ────────────
 def time_of_sun_lon(lon_target, t_approx, half_width=None):

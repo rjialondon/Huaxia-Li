@@ -1,6 +1,8 @@
 # 华夏历 · Universal Planetary Formula
 # Huaxia Calendar — Interactive Verification Tools
 
+[![verify](https://github.com/rjialondon/Huaxia-Li/actions/workflows/verify.yml/badge.svg)](https://github.com/rjialondon/Huaxia-Li/actions/workflows/verify.yml)
+
 **Live Demo:** https://rjialondon.github.io/Huaxia-Li/
 
 ## What is this?
@@ -40,14 +42,26 @@ A season-anchored calendar is, strictly, built on the **tropical year** (回归�
 
 None of the Mode A/B classifications or intercalary conclusions change under any of the three. For exoplanets, the osculating orbital period stands in for Y₁: axial precession there is unmeasured, and the difference is far below current observational uncertainty.
 
-## Verification Scripts
+## Verification
 
-Two standalone Python scripts (standard library only) independently recompute the paper's tables and simulations — see [`verification/`](verification/) for details and known errata:
+Three standalone Python scripts independently recompute the paper's tables and simulations, and cross-check the solar model against a real ephemeris — see [`verification/`](verification/) for details and known errata. All three run in CI on every push.
 
 ```bash
-python3 verification/verify_tables.py   # Appendix A tables from JPL parameters
-python3 verification/aphelion_sim.py    # 400-yr Kepler simulation of aphelion clustering
+python3 verification/verify_tables.py     # Appendix A tables from JPL parameters (stdlib only)
+python3 verification/aphelion_sim.py      # 400-yr Kepler simulation of aphelion clustering (stdlib only)
+pip install skyfield && \
+python3 verification/ephemeris_check.py   # solar-term timing vs JPL DE421: max Δ ≈ 14 min over 2 yr
 ```
+
+## Related Work — where this sits in the timekeeping stack
+
+Planetary timekeeping has three layers. This work addresses the third, which is currently the least standardized:
+
+1. **Time scales** (seconds; relativistic clock rates) — UTC/TAI/TT/TDB on Earth; Mars solar time as defined by **Allison & McEwen (2000)**, *Planet. Space Sci.* 48, 215 (the basis of NASA GISS **Mars24** and of LMST/LTST used in Mars surface operations); **Coordinated Lunar Time (LTC)**, directed by the US OSTP in 2024 for cislunar operations. These define *what time it is*.
+2. **Day counts** — sols, Mission Sol numbers, MJD. These define *how many days have passed*.
+3. **Calendars** (months, years, intercalation — the human scheduling layer) — Gregorian (Earth's parameters hardcoded), the **Darian calendar** (Gangale, 1986–2006; a hand-crafted calendar for Mars specifically). This layer defines *what day it means*.
+
+The Huaxia formula differs from prior layer-3 work in kind, not degree: it is not another hand-crafted calendar for one body, but a **parametric generator** — feed it (Y₁, local day, satellites, N) and it emits the calendar, including whether intercalation exists at all (Mode A test), for any body. Layer 1 and 2 standards are complementary, not competing: a deployed Huaxia calendar for Mars would sit on top of Allison–McEwen solar time exactly as the Gregorian calendar sits on top of UTC.
 
 ## Paper
 
@@ -55,6 +69,10 @@ Jia Runzhang (2026). *The Huaxia Li (华夏历): A Misclassified Planetary Timek
 
 - Zenodo: https://doi.org/10.5281/zenodo.19571784
 - SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6576158
+
+## Citing
+
+See [`CITATION.cff`](CITATION.cff) (GitHub renders a "Cite this repository" button). Please cite the paper DOI above for the methodology, and the repository for the tools and verification scripts.
 
 ## Deploy
 

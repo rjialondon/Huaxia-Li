@@ -1,3 +1,5 @@
 node_modules/
 .DS_Store
 dist/
+verification/de421.bsp
+__pycache__/

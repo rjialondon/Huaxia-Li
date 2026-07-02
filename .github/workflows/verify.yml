@@ -1,0 +1,43 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache JPL ephemeris (de421.bsp)
+        uses: actions/cache@v4
+        with:
+          path: verification/de421.bsp
+          key: de421-bsp
+
+      - name: Install skyfield
+        run: pip install skyfield
+
+      - name: Appendix A tables (JPL parameters, stdlib only)
+        run: python verification/verify_tables.py
+
+      - name: 400-yr aphelion clustering simulation (stdlib only)
+        run: python verification/aphelion_sim.py
+
+      - name: Solar-term timing vs JPL DE421 ephemeris (fails if > 30 min)
+        run: python verification/ephemeris_check.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build site
+        run: |
+          npm ci
+          npm run build

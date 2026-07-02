@@ -11,14 +11,16 @@ const N_YEARS = 400;
 const N_PHASES = 6;         // lunar phase offsets (12 in Python; 6 is sufficient)
 
 // ── Equation-of-center to e³ ──────────────────────────────────────────────────
+// 双轨模型（岁差正确，与 aphelion_sim.py 同步）：
+// 平黄经走回归年速率，平近点角走近点年速率——两率之差即近日点相对分点的漂移(~61.9″/yr)
+// λ(t) = PERI + 360·t/Y_TROP + C(M),  M = 2π·t/Y_ANOM
 function sunLon(t) {
   const M = 2 * Math.PI * t / Y_ANOM;
   const e = ECC;
-  const nu = M
-    + (2*e - e**3/4) * Math.sin(M)
+  const C = (2*e - e**3/4) * Math.sin(M)
     + (5*e**2/4)     * Math.sin(2*M)
     + (13*e**3/12)   * Math.sin(3*M);
-  return ((nu * 180 / Math.PI + PERI) % 360 + 360) % 360;
+  return ((PERI + 360 * t / Y_TROP + C * 180 / Math.PI) % 360 + 360) % 360;
 }
 
 // ── Bisection: find t when sun crosses lonTarget ──────────────────────────────
@@ -162,7 +164,7 @@ const T = {
     pageTitle:  "数值验证",
     pageSub:    "论文附录 A.3 · A.4 · §6 的独立数值重现",
     simTitle:   "§6 远日点置闰分布",
-    simDesc:    "Earth · 400 回归年 × 6 月相 | 无中气规则 | 近点年 + 三阶中心方程",
+    simDesc:    "Earth · 400 回归年 × 6 月相 | 无中气规则 | 回归年+近点年双轨 · 三阶中心方程",
     byMonth:    "按置闰前月序分布",
     bySunLon:   "按月起始太阳经度分布（30° 分桶）",
     leap:       "闰",
@@ -196,7 +198,7 @@ const T = {
     pageTitle:  "Numerical Verification",
     pageSub:    "Independent numerical reproduction of Appendix A.3 · A.4 · §6",
     simTitle:   "§6 Aphelion Intercalary Distribution",
-    simDesc:    "Earth · 400 tropical years × 6 phases | no-Zhongqi rule | anomalistic year + e³ equation of center",
+    simDesc:    "Earth · 400 tropical years × 6 phases | no-Zhongqi rule | tropical+anomalistic two-track · e³ equation of center",
     byMonth:    "Distribution by preceding month number",
     bySunLon:   "Distribution by sun longitude at month start (30° bins)",
     leap:       "Leap",
@@ -355,8 +357,10 @@ export default function AphSim({ lang = "zh" }) {
             {
               label: t.claimWS,
               value: `${ws11} + ${ws12} = ${ws11 + ws12}`,
-              note: `${t.expected}: ~0`,
-              ok: ws11 + ws12 <= 2,
+              note: `${t.expected}: ≈0 (${((ws11 + ws12) / total * 100).toFixed(2)}%)`,
+              // 论文主张"极罕"：按占比判定（<1%），不押死绝对计数——
+              // 现实对照：真实历法中闰十一月确有孤例（2033年）
+              ok: total > 0 && (ws11 + ws12) / total < 0.01,
             },
             {
               label: t.total,
