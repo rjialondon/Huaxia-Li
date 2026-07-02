@@ -249,10 +249,11 @@ function bestRational(frac, maxDenom = 100) {
 }
 
 // ── PRESETS ──
-// N = 节气分段数。黄道是 360°，可以等分成任意 N 份——公式本身对 N 无要求（N≥2 即可）。
-// 地球选 N=24 的逻辑：Y₁/Tᵢ ≈ 12.37 → 想让 N/2 接近月数 → 选 N=24 → 恰好每份 15°。
-// 顺序是：先有月数比率，后才有 24；不是"黄道必须24份"，是"为匹配月数选了24"。
-// 其他行星会从自己的 Y₁/Tᵢ 推出各自的 N，置闰结构（无中气规则、余分、p/q 章法）完全一致。
+// N = 节气分段数：太阳侧分辨率的独立约定（黄道 360° 等分 N 份，偶数使节/气成对）。
+// 因果链（勿倒）：先选 N（想把季节跟踪到多细），卫星再受判——
+//   甲型判据 Y₁/N ≤ Tᵢ < 2Y₁/N 等价于 月数/年 ∈ (N/2, N]。
+// 地球 N=24 恰好 = 2×月数(12.37)，是华夏历刻意利用的共振（无中气置闰机制最紧），
+//   属设计巧思而非判据前提；N = 2·round(Y₁/Tᵢ) 只是给新行星选共振最优 N 的启发式。
 // ⚠  慎重修改：N 牵动 Z、lo、hi、历法表全部导出量，改之前先确认意图。
 const PRESETS = {
   // Y1 和 Tᵢ 均为本地日（行星自转次数）。localDay(小时) 仅作地球换算桥，可选。
@@ -470,6 +471,8 @@ function buildReport(state, r, t, lang) {
 
 // ── CALENDAR ENGINE ──
 // Time within year [0, Y1) to reach k-th solar term out of N (k=0..N; k=N → Y1)
+// 相位约定：第0节气锚定于近日点（θ 从近日点起算）。这是演示约定——
+// 地球真实历以冬至为岁首，近日点在冬至后约13日；差一个整体相位，不影响结构结论。
 function keplerTermTime(k, N, ecc, Y1) {
   const yr = Math.floor(k / N);
   const kMod = k % N;
@@ -854,11 +857,12 @@ export default function CustomCalculator({ lang }) {
               <InputRow label={t.stellarYear}><NumInput value={state.Y1} onChange={v => set("Y1", v)} min={0.1} /></InputRow>
               <InputRow label={t.localDay}><NumInput value={state.localDay} onChange={v => set("localDay", v)} min={0.1} /></InputRow>
               <InputRow label={t.ecc}><NumInput value={state.ecc} onChange={v => set("ecc", v)} min={0} max={0.99} step={0.01} /></InputRow>
-              <InputRow label={t.solarTerms}><NumInput value={state.N} onChange={v => set("N", v)} min={2} max={360} step={1} /></InputRow>
+              {/* 偶数 N：节/气成对（中气=偶数位节气），奇数会破坏无中气置闰的机制 */}
+              <InputRow label={t.solarTerms}><NumInput value={state.N} onChange={v => set("N", v)} min={4} max={360} step={2} /></InputRow>
               <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)", paddingLeft: 190, marginTop: -4, marginBottom: 8 }}>
-                {state.sats.length === 0
-                  ? (lang === "zh" ? "当前：约定值（无卫星，默认 24）" : "current: convention (no satellite, default 24)")
-                  : (lang === "zh" ? "当前：可从 Y₁/Tᵢ 推导（有卫星）" : "current: derivable from Y₁/Tᵢ (satellite present)")}
+                {lang === "zh"
+                  ? "N 是太阳侧约定；卫星受判于 N（月数/年 ∈ (N/2, N] ⇒ 甲型）"
+                  : "N is a solar-side convention; satellites are tested against it (months/yr ∈ (N/2, N] ⇒ Mode A)"}
               </div>
               <InputRow label={t.locked}>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -1209,8 +1213,8 @@ export default function CustomCalculator({ lang }) {
                 {state.ecc > 0.01 && (
                   <div style={{ marginTop: 12, fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", lineHeight: 1.6 }}>
                     {lang === "zh"
-                      ? `蓝 < 均值 ${r.lo.toFixed(2)} 本地日（近日点快速）· 黄 > 均值（远日点慢速）`
-                      : `Blue < mean ${r.lo.toFixed(2)} local d (fast, perihelion) · Yellow > mean (slow, aphelion)`}
+                      ? `蓝 < 均值 ${r.lo.toFixed(2)} 本地日（近日点快速）· 黄 > 均值（远日点慢速）· 相位约定：第1节气锚定近日点（地球真实历以冬至为岁首）`
+                      : `Blue < mean ${r.lo.toFixed(2)} local d (fast, perihelion) · Yellow > mean (slow, aphelion) · Phase convention: term 1 anchored at perihelion (Earth's real calendar anchors at winter solstice)`}
                   </div>
                 )}
 

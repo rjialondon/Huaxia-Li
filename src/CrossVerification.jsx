@@ -423,13 +423,17 @@ function Detail({ sys, lang }) {
           <Cell label={t.zhongqiInterval} value={`${a.Z.toFixed(4)} ${t.days}`} />
           <Cell label={t.modeARange} value={`${a.lo.toFixed(3)} – ${a.hi.toFixed(3)}`} sub={t.earthDays} />
           <Cell label={t.eccentricity} value={sys.eccentricity} />
-          <Cell label={t.localDay} value={sys.localDay < 48 ? `${sys.localDay.toFixed(2)} ${t.hours}` : `${(sys.localDay/24).toFixed(1)} ${t.days}`} sub={sys.localDayAssumed ? (lang === "zh" ? "假设值 / assumed" : "assumed value") : null} />
+          <Cell label={t.localDay}
+            value={a.isLocked
+              ? (lang === "zh" ? "∞（恒星静止）" : "∞ (star fixed)")
+              : sys.localDay < 48 ? `${sys.localDay.toFixed(2)} ${t.hours}` : `${(sys.localDay/24).toFixed(1)} ${t.days}`}
+            sub={a.isLocked
+              ? (lang === "zh" ? `自转=公转 ${(sys.localDay/24).toFixed(1)} 天` : `rotation = orbit, ${(sys.localDay/24).toFixed(1)} d`)
+              : sys.localDayAssumed ? (lang === "zh" ? "假设值 / assumed" : "assumed value") : null} />
           <Cell label={t.shichen} value={a.shichenValid ? `${a.shichen.toFixed(2)} ${t.hours}` : a.isLocked ? t.undefinedLocked : t.degenerate} />
           {sys.m >= 2 && sys.binaryPeriod && <Cell label={t.binaryPeriod} value={`${sys.binaryPeriod.toFixed(2)} ${t.days}`} sub={t.overlaySource} />}
           <Cell label="N" value={sys.N} sub={
-            a.modeA.length > 0
-              ? (lang === "zh" ? "推导自 Y₁/Tᵢ" : "derived from Y₁/Tᵢ")
-              : (lang === "zh" ? "约定 (无甲型卫星)" : "convention (no Mode A sat.)")
+            lang === "zh" ? `太阳侧分辨率约定 (${360/sys.N}°/段)` : `solar-side convention (${360/sys.N}°/div)`
           } />
         </div>
       </div>

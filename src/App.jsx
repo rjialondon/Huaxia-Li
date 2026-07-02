@@ -17,7 +17,7 @@ const NAV = {
     heroFormula: "Universal Planetary Formula",
     heroDesc: "一个从中国古代历法中提取的数学框架，用同一套结构处理任意行星系统的计时问题。",
     heroDesc2: "以下三个交互工具使用真实天文数据验证公式的通用性。",
-    heroPrinciple: "设计原则：参数优先从天文结构推导；天文结构缺位时，走约定。公式本身不含任何地球专属常数。",
+    heroPrinciple: "设计原则：公式只含自由参数（Y₁·本地日·Tᵢ·N）。N 是太阳侧分辨率约定——24 只是地球实例的取值；判据检验卫星，不由卫星定义。",
     card1Title: "跨星系交叉验证",
     card1Desc: "10个真实天文系统 — 从地球到环双星行星，从6天超短年到7170年超长周期。代入公式，全部有定义输出。公历仅在地球参数下可工作。",
     card2Title: "甲型系外卫星猎手",
@@ -45,7 +45,7 @@ const NAV = {
     heroFormula: "Huaxia Calendar",
     heroDesc: "A mathematical framework extracted from the ancient Chinese calendar, capable of handling timekeeping for any planetary system with a single unified structure.",
     heroDesc2: "Three interactive tools below verify the formula's universality using real astronomical data.",
-    heroPrinciple: "Design principle: parameters are first derived from celestial structure; convention fills in only where nature provides no answer. The formula contains no Earth-specific constants.",
+    heroPrinciple: "Design principle: the formula carries only free parameters (Y₁, local day, Tᵢ, N). N is a solar-side resolution convention — 24 is merely Earth's instance value; the criterion tests satellites, it is not defined by them.",
     card1Title: "Cross-System Verification",
     card1Desc: "10 real astronomical systems — from Earth to circumbinary planets, from 6-day ultra-short years to 7,170-year ultra-long periods. All produce defined output. Gregorian works only for Earth.",
     card2Title: "Mode A Exomoon Hunter",
@@ -187,8 +187,8 @@ function HomePage({ lang, onNavigate }) {
         )}
         <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)", opacity: 0.7, lineHeight: 1.6 }}>
           {lang === "zh"
-            ? "隐私声明：不收集IP地址，仅统计访问次数。同一浏览器24小时内只计一次。"
-            : "Privacy: no IP addresses collected. Visit count only. One count per browser per 24 hours."}
+            ? "隐私声明：不存储IP地址，仅统计访问次数。同一浏览器24小时内只计一次。"
+            : "Privacy: no IP addresses stored. Visit count only. One count per browser per 24 hours."}
         </div>
       </div>
     </div>
