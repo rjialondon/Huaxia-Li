@@ -14,13 +14,13 @@ function bestRational(frac, maxDenom = 100) {
 
 // 恒星周期 → 朔望周期（相对宿主恒星的会合周期）
 // Tsid: 卫星绕行星的轨道周期(天); Y1: 行星年(天)
-const toSynodic = (Tsid, Y1) => 1 / (1 / Tsid - 1 / Y1);
+// 受希尔球约束，受缚卫星必有 Tsid < Y1；护栏防异常输入除零/取负
+const toSynodic = (Tsid, Y1) => (Tsid > 0 && Tsid < Y1) ? 1 / (1 / Tsid - 1 / Y1) : Infinity;
 
 const T = {
   zh: {
     header: "华夏历 · 甲型系外卫星猎手",
     subtitle: "在已知系外卫星候选体中搜索满足置闰条件 Y₁/N ≤ Tᵢ < 2Y₁/N 的甲型实例",
-    summaryLabel: "/ {0} 满足甲型",
     confirmed: (n) => n > 0 ? `其中 ${n} 已确认` : "",
     candidates: (n) => n > 0 ? `${n} 候选` : "",
     maybeLabel: (n) => n > 0 ? `· ${n} 个在不确定性范围内可能甲型` : "",
@@ -75,7 +75,6 @@ const T = {
   en: {
     header: "Huaxia Calendar · Mode A Exomoon Hunter",
     subtitle: "Searching known exomoon candidates for Mode A intercalary eligibility: Y₁/N ≤ Tᵢ < 2Y₁/N",
-    summaryLabel: "/ {0} satisfy Mode A",
     confirmed: (n) => n > 0 ? `${n} confirmed` : "",
     candidates: (n) => n > 0 ? `${n} candidates` : "",
     maybeLabel: (n) => n > 0 ? `· ${n} possibly Mode A within uncertainty` : "",
@@ -98,7 +97,7 @@ const T = {
     zhangVerify: (p, q) => `Best Zhang Period (${p}/${q}) =`,
     error: "error",
     conclusionTitle: "Findings",
-    conclusion1: "Beyond Earth's Moon, at least one exomoon candidate satisfies Mode A — meaning the Huaxia Calendar's intercalary mechanism is not Earth-specific but a universal structure instanciable in other stellar systems.",
+    conclusion1: "Beyond Earth's Moon, at least one exomoon candidate satisfies Mode A — meaning the Huaxia Calendar's intercalary mechanism is not Earth-specific but a universal structure instantiable in other stellar systems.",
     conclusion2: "Earth's Moon remains the only confirmed Mode A instance, but some candidates' uncertainty ranges overlap with the Mode A interval. Improved JWST and VLTI/GRAVITY+ precision may reveal more instances.",
     conclusion3: "Earth's Moon is currently the only known Mode A instance.",
     conclusionNote: "Note: As of 2026, no exomoon has been officially confirmed. All candidates require further verification. The formula's value lies in providing the criterion in advance: whenever Y₁/N ≤ Tᵢ < 2Y₁/N, intercalation is automatic. The standard awaits the data.",
@@ -142,14 +141,16 @@ const CANDIDATES = [
     star: "Kepler-1625 (类太阳G型恒星, 1.079 M☉)",
     distance: "8,000 ly",
     Y1: 287.38, // planet orbital period = stellar year
-    moonName: "Kepler-1625 b I (候选)",
-    moonDesc: "海王星大小，~16 M⊕，距行星约40行星半径",
+    moonName: "Kepler-1625 b I",
+    moonDesc_zh: "海王星大小，~16 M⊕，距行星约40行星半径",
+    moonDesc_en: "Neptune-sized, ~16 M⊕, at roughly 40 planetary radii from the planet",
     Ti_est: 19, // Teachey & Kipping 2018, Science Advances 4(10): eaav1784, DOI: 10.1126/sciadv.aav1784 — 卫星周期约束宽松, 中心估计 ~19 d (恒星周期)
     Ti_range: [13, 39], // 复核: Kipping et al. 2022, Nature Astronomy, DOI: 10.1038/s41550-021-01539-1
     TiIsSynodic: false,
     confirmed: false,
     status: "争议中",
-    statusDetail: "2018年Teachey & Kipping (HST)发现证据，2019年Kreidberg等独立分析未确认，2023年Heller等认为可能是假阳性。截至2025年仍未确认。",
+    statusDetail_zh: "2018年Teachey & Kipping (HST)发现证据，2019年Kreidberg等独立分析未确认，2023年Heller等认为可能是假阳性。截至2025年仍未确认。",
+    statusDetail_en: "Evidence reported by Teachey & Kipping (HST) in 2018; not recovered by Kreidberg et al.'s independent 2019 analysis; Heller et al. 2023 argue a possible false positive. Unconfirmed as of 2025.",
     source: "Teachey & Kipping 2018 (Science Advances), Kipping 2022",
     localDay: 10, // gas giant, assume fast rotation ~10h
     localDayAssumed: true,
@@ -161,14 +162,16 @@ const CANDIDATES = [
     star: "Kepler-1708 (类太阳恒星)",
     distance: "5,600 ly",
     Y1: 737.11, // planet orbital period
-    moonName: "Kepler-1708 b I (候选)",
-    moonDesc: "约2.6倍地球半径，距行星约12行星半径",
+    moonName: "Kepler-1708 b I",
+    moonDesc_zh: "约2.6倍地球半径，距行星约12行星半径",
+    moonDesc_en: "About 2.6 Earth radii, at roughly 12 planetary radii from the planet",
     Ti_est: 4.6, // roughly estimated from orbital distance
     Ti_range: [2, 10], // approximate range
     TiIsSynodic: false,
     confirmed: false,
     status: "争议中",
-    statusDetail: "2022年Kipping等发现，2023年Heller & Hippke重新分析认为不太可能存在。",
+    statusDetail_zh: "2022年Kipping等发现，2023年Heller & Hippke重新分析认为不太可能存在。",
+    statusDetail_en: "Reported by Kipping et al. 2022; Heller & Hippke's 2023 reanalysis finds it unlikely to exist.",
     source: "Kipping et al. 2022 (Nature Astronomy)",
     localDay: 10,
     localDayAssumed: true,
@@ -180,14 +183,16 @@ const CANDIDATES = [
     star: "HD 206893 (F5V主序星, ~1.3 M☉)",
     distance: "133 ly",
     Y1: 25.6 * 365.25, // ~25.6 years in days = 9350 days
-    moonName: "HD 206893 B I (候选)",
-    moonDesc: "极大质量，~0.4 MJ (≈9倍海王星质量)，距宿主约0.22 AU",
+    moonName: "HD 206893 B I",
+    moonDesc_zh: "极大质量，~0.4 MJ (≈9倍海王星质量)，距宿主约0.22 AU",
+    moonDesc_en: "Very massive, ~0.4 MJ (≈9 Neptune masses), at ~0.22 AU from its host",
     Ti_est: 0.76 * 365.25, // ~0.76 years = ~277.6 days
     Ti_range: [200, 350], // approximate
     TiIsSynodic: false,
     confirmed: false,
     status: "初步信号",
-    statusDetail: "2026年1月巴黎天文台Kral等使用VLTI/GRAVITY天体测量首次检测。信号显示~9个月周期的天体测量摆动。尚需进一步验证。",
+    statusDetail_zh: "2026年1月巴黎天文台Kral等使用VLTI/GRAVITY天体测量首次检测。信号显示~9个月周期的天体测量摆动。尚需进一步验证。",
+    statusDetail_en: "First astrometric detection by Kral et al. (Paris Observatory) with VLTI/GRAVITY, January 2026: a ~9-month astrometric wobble. Awaits further verification.",
     source: "Kral et al. 2026 (A&A), VLTI/GRAVITY",
     localDay: 10,
     localDayAssumed: true,
@@ -195,19 +200,22 @@ const CANDIDATES = [
   // ── Hypothetical Earth-analogue for comparison ──
   {
     id: "earth_ref", N: 24,
-    host: "地球 (参考基线)",
+    host_zh: "地球（参考基线）",
+    host_en: "Earth (reference baseline)",
     hostDesc: "岩质行星，1 M⊕",
     star: "太阳 (G2V, 1.0 M☉)",
     distance: "0 ly",
     Y1: 365.25,
     moonName: "月球 Moon",
-    moonDesc: "0.0123 M⊕, 距地球60.3地球半径",
+    moonDesc_zh: "0.0123 M⊕，距地球60.3地球半径",
+    moonDesc_en: "0.0123 M⊕, at 60.3 Earth radii",
     Ti_est: 29.5306,
     Ti_range: [29.53, 29.53],
     TiIsSynodic: true,
     confirmed: true,
     status: "已确认",
-    statusDetail: "唯一已知的甲型实例。Tᵢ/Z = 97%，位于甲型范围上界附近。",
+    statusDetail_zh: "唯一已知的甲型实例。Tᵢ/Z = 97%，位于甲型范围上界附近。",
+    statusDetail_en: "The only known Mode A instance. Tᵢ/Z = 97%, near the Mode A upper bound.",
     source: "NASA JPL",
     localDay: 24,
   },
@@ -287,8 +295,8 @@ function CandidateCard({ c, t, lang }) {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--fg)" }}>{c.moonName}</div>
-          <div style={{ fontSize: 12, color: "var(--dim2)", marginTop: 2 }}>{t.orbitLabel} {c.host} · {c.distance}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--fg)" }}>{c.moonName}{!c.confirmed && (lang === "zh" ? "（候选）" : " (candidate)")}</div>
+          <div style={{ fontSize: 12, color: "var(--dim2)", marginTop: 2 }}>{t.orbitLabel} {(lang === "zh" ? c.host_zh : c.host_en) || c.host} · {c.distance}</div>
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <span style={{
@@ -312,7 +320,7 @@ function CandidateCard({ c, t, lang }) {
 
       {/* Description */}
       <div style={{ fontSize: 12, color: "var(--dim2)", lineHeight: 1.6, marginBottom: 12 }}>
-        {c.moonDesc}
+        {lang === "zh" ? c.moonDesc_zh : c.moonDesc_en}
       </div>
 
       {/* Parameters */}
@@ -380,7 +388,7 @@ function CandidateCard({ c, t, lang }) {
                 <>
                   <div>Y₁/Tᵢ = {c.Y1.toFixed(2)} / {a.Tsyn.toFixed(2)} = <b>{mpy.toFixed(4)}</b> {t.monthsPerYear}</div>
                   <div>{t.intMonths} = {Math.floor(mpy)} · {t.fraction} = {frac.toFixed(4)}</div>
-                  <div>{t.leapFreq} <b>{interval.toFixed(2)}</b> {c.host.includes("地球") ? t.years : t.localYears} · {t.leapMonth}</div>
+                  <div>{t.leapFreq} <b>{interval.toFixed(2)}</b> {c.id === "earth_ref" ? t.years : t.localYears} · {t.leapMonth}</div>
                   {(() => { const br = bestRational(frac); return <div style={{ color: "var(--dim2)", marginTop: 4 }}>{t.zhangVerify(br.p, br.q)} {(br.p/br.q).toFixed(5)} vs {frac.toFixed(5)} → {t.error} {(Math.abs(br.p/br.q - frac)/frac*100).toFixed(3)}%</div>; })()}
                 </>
               );
@@ -401,7 +409,7 @@ function CandidateCard({ c, t, lang }) {
 
       {/* Source */}
       <div style={{ fontSize: 10, color: "var(--dim)", marginTop: 10, fontFamily: "var(--mono)" }}>
-        {c.source} · {c.statusDetail}
+        {c.source} · {lang === "zh" ? c.statusDetail_zh : c.statusDetail_en}
       </div>
     </div>
   );

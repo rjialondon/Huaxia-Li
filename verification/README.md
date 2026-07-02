@@ -1,6 +1,6 @@
 # Verification Scripts
 
-Independent verification of key claims in Jia Runzhang (2026), *华夏历: The Huaxia Calendar as a Universal Timekeeping Methodology*.
+Independent verification of key claims in Jia Runzhang (2026), *The Huaxia Li (华夏历): A Misclassified Planetary Timekeeping Methodology and Its Architectural Relevance to Self-Sovereign Computing Systems*.
 
 ## Scripts
 
@@ -23,6 +23,14 @@ the Winter Solstice month has zero intercalary insertions over 400 years.
 
 Run: `python3 aphelion_sim.py`  
 No external dependencies (standard library only).
+
+**Reading the two clustering metrics.** The script reports aphelion clustering two ways,
+and they are different quantities:
+- *Leap-4/5/6 month window* ≈ 48.8% — this is the metric the paper's §6 "~50%" claim refers to.
+- *Aphelion half-year by sun longitude* (window [12.9°, 192.9°)) ≈ 83.4% — a direct
+  longitude-based measure with no corresponding claim in the paper. It shows the physical
+  clustering is substantially **stronger** than the month-number proxy suggests, because the
+  Sun spends more than half of each year traversing the aphelion half (Kepler's second law).
 
 ## Known Errata (paper not changed; recorded here for transparency)
 

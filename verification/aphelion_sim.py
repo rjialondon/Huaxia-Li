@@ -1,5 +1,6 @@
 """
-Aphelion clustering simulation — aligned with 大哥 independent reference.
+Aphelion clustering simulation — cross-checked against an independent
+reference implementation.
 Uses anomalistic year, sun-longitude Zhongqi, equation-of-center to e³.
 Verifies: ~50% of no-Zhongqi months fall in the aphelion half-year;
 Winter Solstice month has ~0 intercalary insertions over 400 years.
@@ -186,7 +187,10 @@ def in_aph(lon):
 n_aph = sum(1 for (lon, _) in intercalary_months if in_aph(lon))
 pct   = n_aph / total * 100 if total else 0
 print(f"\n  Aphelion lon ≈ {aph_lon:.1f}°; half-year window [{aph_lo:.1f}°, {aph_hi:.1f}°):")
-print(f"  In aphelion half: {n_aph} / {total} = {pct:.1f}%  (paper §6: ~50%)")
+print(f"  In aphelion half: {n_aph} / {total} = {pct:.1f}%")
+print( "  (Note: no direct paper claim for this longitude window. Paper §6's ~50%")
+print( "   refers to the leap-4/5/6 month window below; by sun longitude the")
+print( "   aphelion clustering is substantially stronger than that proxy suggests.)")
 
 # Leap 4–6 (NH summer — months with highest aphelion overlap)
 n46 = sum(1 for (_, m) in intercalary_months if 4 <= m <= 6)

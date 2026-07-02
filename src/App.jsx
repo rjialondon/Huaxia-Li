@@ -21,12 +21,12 @@ const NAV = {
     card1Title: "跨星系交叉验证",
     card1Desc: "10个真实天文系统 — 从地球到环双星行星，从6天超短年到7170年超长周期。代入公式，全部有定义输出。公历仅在地球参数下可工作。",
     card2Title: "甲型系外卫星猎手",
-    card2Desc: "在已知系外卫星候选体中搜索满足置闰条件的甲型实例。Kepler-1625 b I：可能是地球月球之外的第二个甲型候选。",
+    card2Desc: "在已知系外卫星候选体中搜索满足置闰条件的甲型实例。Kepler-1625 b I：可能是地球月球之外的第二个甲型实例（该候选体本身尚存观测争议）。",
     card3Title: "自定义验算器",
     card3Desc: "输入任意行星参数，公式实时输出结果。添加恒星、卫星、叠合体，观察分类如何变化。",
     enter: "进入 →",
     paperLabel: "论文",
-    paperText: "Jia Runzhang (2026). 华夏历: The Huaxia Calendar as a Universal Timekeeping Methodology",
+    paperText: "Jia Runzhang (2026). The Huaxia Li (华夏历): A Misclassified Planetary Timekeeping Methodology and Its Architectural Relevance to Self-Sovereign Computing Systems",
     zenodo: "Zenodo",
     ssrn: "SSRN",
     license: "数据来源：NASA JPL · Kepler/TESS · ESO HARPS/SPHERE/VLT · Spitzer/JWST",
@@ -49,12 +49,12 @@ const NAV = {
     card1Title: "Cross-System Verification",
     card1Desc: "10 real astronomical systems — from Earth to circumbinary planets, from 6-day ultra-short years to 7,170-year ultra-long periods. All produce defined output. Gregorian works only for Earth.",
     card2Title: "Mode A Exomoon Hunter",
-    card2Desc: "Searching known exomoon candidates for Mode A intercalary eligibility. Kepler-1625 b I: potentially the second Mode A instance beyond Earth's Moon.",
+    card2Desc: "Searching known exomoon candidates for Mode A intercalary eligibility. Kepler-1625 b I: potentially the second Mode A instance beyond Earth's Moon (the candidate itself remains observationally disputed).",
     card3Title: "Custom Calculator",
     card3Desc: "Input any planetary parameters, get real-time formula output. Add stars, satellites, overlays. Watch classifications shift as you adjust values.",
     enter: "Enter →",
     paperLabel: "Paper",
-    paperText: "Jia Runzhang (2026). 华夏历: The Huaxia Calendar as a Universal Timekeeping Methodology",
+    paperText: "Jia Runzhang (2026). The Huaxia Li (华夏历): A Misclassified Planetary Timekeeping Methodology and Its Architectural Relevance to Self-Sovereign Computing Systems",
     zenodo: "Zenodo",
     ssrn: "SSRN",
     license: "Data: NASA JPL · Kepler/TESS · ESO HARPS/SPHERE/VLT · Spitzer/JWST",
@@ -165,8 +165,8 @@ function HomePage({ lang, onNavigate }) {
         <div className="paper-label">{t.paperLabel}</div>
         <div className="paper-text">{t.paperText}</div>
         <div className="paper-links">
-          <a href="https://zenodo.org" target="_blank" rel="noopener noreferrer" className="paper-link">{t.zenodo} ↗</a>
-          <a href="https://ssrn.com" target="_blank" rel="noopener noreferrer" className="paper-link">{t.ssrn} ↗</a>
+          <a href="https://doi.org/10.5281/zenodo.19571784" target="_blank" rel="noopener noreferrer" className="paper-link">{t.zenodo} ↗</a>
+          <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6576158" target="_blank" rel="noopener noreferrer" className="paper-link">{t.ssrn} ↗</a>
         </div>
       </div>
 

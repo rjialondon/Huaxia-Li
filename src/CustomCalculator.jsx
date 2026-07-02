@@ -266,15 +266,17 @@ const PRESETS = {
   mars: {
     stars: [{ name: "Sun", mass: 1.0 }],
     // 1 火星日 = 24.66h = 1.0275 地球日；火星年 686.97÷1.0275 = 668.60 火星日
+    // Tᵢ 均为会合(朔望)周期：T_syn = 1/(1/T_sid − 1/Y₁)，再除以本地日换算
     Y1: 668.60, localDay: 24.66, ecc: 0.0934, locked: false, N: 24,
-    sats: [{ name: "Phobos", Ti: 0.3105 }, { name: "Deimos", Ti: 1.2263 }],
+    sats: [{ name: "Phobos", Ti: 0.3105 }, { name: "Deimos", Ti: 1.2309 }],
     overlays: [], binaryPeriod: 0,
   },
   jupiter: {
     stars: [{ name: "Sun", mass: 1.0 }],
     // 1 木星日 = 9.93h = 0.41375 地球日；木星年 4332.6÷0.41375 = 10471 木星日
+    // Tᵢ 均为会合(朔望)周期换算（与输入框"朔望周期Tᵢ"口径一致）
     Y1: 10471, localDay: 9.93, ecc: 0.0489, locked: false, N: 24,
-    sats: [{ name: "Io", Ti: 4.276 }, { name: "Europa", Ti: 8.583 }, { name: "Ganymede", Ti: 17.29 }, { name: "Callisto", Ti: 40.33 }, { name: "Himalia", Ti: 642.8 }],
+    sats: [{ name: "Io", Ti: 4.277 }, { name: "Europa", Ti: 8.590 }, { name: "Ganymede", Ti: 17.321 }, { name: "Callisto", Ti: 40.492 }, { name: "Himalia", Ti: 642.8 }],
     overlays: [], binaryPeriod: 0,
   },
   tatooine: {
@@ -368,7 +370,10 @@ function compute(state) {
     intercalary = { monthsPerYear: mpy, fraction: frac, interval: frac > 0 ? 1 / frac : Infinity };
   }
 
-  const gregWorks = stars.length === 1 && sats.length === 1 && modeA.length === 1 && !locked;
+  // 公历判据：公历是把地球参数硬编码进结构的纯太阳历，与卫星无关——
+  // 可工作 ⇔ 年长 ≈ 365.2425 本地日（97/400闰日规则拟合的常数）。
+  // 容差 ±0.02（漂移 < 1日/50本地年），覆盖回归/恒星/儒略三种地球年口径。
+  const gregWorks = !locked && Math.abs(Y1 - 365.2425) < 0.02;
 
   // ── 三余结构（中国古历核心架构）──────────────────────────────────
   // 朔余：Tᵢ 非整数 → round(k·Tᵢ)−round((k−1)·Tᵢ) → 大月30/小月29交替

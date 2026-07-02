@@ -11,7 +11,7 @@ const T = {
     summaryView: "汇总矩阵",
     langToggle: "EN",
     params: "公式参数",
-    stellarYear: "Y₁ 恒星年",
+    stellarYear: "Y₁ 行星年",
     zhongqiInterval: "Z 中气间隔",
     modeARange: "甲型范围",
     eccentricity: "离心率 e",
@@ -23,8 +23,6 @@ const T = {
     companionStar: "伴星/乙型叠合",
     multiStarNote: "公式处理：Θ₁定义主恒星年和节气，Θ₂(伴星角位置)作为独立乙型叠合层运行。行星绕双星质心运行时，Θ应相对于质心定义。",
     satClass: "卫星分类 ΦA / ΦB",
-    noSatLocked: "潮汐锁定行星通常无法维持稳定卫星轨道",
-    noSatNone: "该行星无天然卫星",
     noSat: (locked) => `无已知卫星 (n=0) — ${locked ? "潮汐锁定行星通常无法维持稳定卫星轨道" : "该行星无天然卫星"}`,
     overlayBodies: "附加叠合体:",
     periodRatio: "周期比",
@@ -93,7 +91,7 @@ const T = {
     summaryView: "Summary Matrix",
     langToggle: "中文",
     params: "Formula Parameters",
-    stellarYear: "Y₁ Stellar Year",
+    stellarYear: "Y₁ Orbital Year",
     zhongqiInterval: "Z Zhongqi Interval",
     modeARange: "Mode A Range",
     eccentricity: "Eccentricity e",
@@ -221,8 +219,8 @@ const SYSTEMS = [
     source: "NASA JPL", m: 1, N: 24, stars: [{ name: "太阳 Sun", mass: 1.0 }],
     Y1: 224.7, localDay: 2802, eccentricity: 0.0068, tidallyLocked: false,
     satellites: [], overlays: [],
-    notes_zh: "极端退化测试：逆行超慢自转，本地日 > 恒星年，无卫星。公式输出最极端纯太阳历。",
-    notes_en: "Extreme degenerate test: retrograde ultra-slow rotation, local day > stellar year, no satellites. Formula outputs most extreme pure solar calendar.",
+    notes_zh: "极端退化测试：逆行超慢自转（恒星自转周期243天 > 恒星年224.7天），太阳日116.75天远超甲型上限18.7天 → 甲型区间为空，无卫星。公式输出最极端纯太阳历。",
+    notes_en: "Extreme degenerate test: retrograde ultra-slow rotation (sidereal rotation 243 d exceeds the 224.7 d year); the 116.75 d solar day is far above the 18.7 d Mode A upper bound → Mode A interval is empty. No satellites. Formula outputs the most extreme pure solar calendar.",
   },
   {
     id: "trappist1e", category: "系外行星：潮汐锁定", name: "TRAPPIST-1 e", emoji: "🔵", distance: "40.7 ly",
@@ -264,7 +262,7 @@ const SYSTEMS = [
     id: "kepler16b", category: "系外行星：环双星", name: "Kepler-16b", emoji: "🪐", distance: "245 ly",
     source: "NASA Kepler, Doyle et al. 2011", m: 2, N: 24,
     stars: [{ name: "Kepler-16A (K, 0.69M☉)", mass: 0.69 }, { name: "Kepler-16B (M, 0.20M☉)", mass: 0.20 }],
-    Y1: 228.776, localDay: 24, eccentricity: 0.0069, tidallyLocked: false,
+    Y1: 228.776, localDay: 24, localDayAssumed: true, eccentricity: 0.0069, tidallyLocked: false,
     binaryPeriod: 41.08,
     satellites: [],
     overlays: [{ name: "Binary mutual orbit", period_years: 41.08 / 228.776 }],
@@ -316,7 +314,8 @@ function bestRational(frac, maxDenom = 100) {
 
 // 恒星周期 → 朔望周期（相对宿主恒星的会合周期）
 // Tsid: 卫星绕行星的轨道周期(天); Y1: 行星年(天)
-const toSynodic = (Tsid, Y1) => 1 / (1 / Tsid - 1 / Y1);
+// 受希尔球约束，受缚卫星必有 Tsid < Y1；护栏防异常输入除零/取负
+const toSynodic = (Tsid, Y1) => (Tsid > 0 && Tsid < Y1) ? 1 / (1 / Tsid - 1 / Y1) : Infinity;
 
 // ── FORMULA ENGINE ──
 function classify(Ti, Y1, localDayHours, lang, N) {
@@ -362,7 +361,11 @@ function analyze(sys, lang) {
   else if (sys.satellites.length === 0) formulaOutput = { type: t.pureSolar, icon: "→", color: "#f59e0b" };
   else formulaOutput = { type: t.solarPlus(modeB.length), icon: "→", color: "#3b82f6" };
 
-  const gregWorks = sys.m === 1 && sys.satellites.length === 1 && modeA.length === 1 && !isLocked;
+  // 公历判据：公历是把地球参数硬编码进结构的纯太阳历，与卫星无关——
+  // 可工作 ⇔ 行星的本地日计数年长 ≈ 365.2425（97/400闰日规则拟合的常数）。
+  // 容差 ±0.02 本地日/年（漂移 < 1日/50本地年），覆盖回归/恒星/儒略三种地球年口径。
+  const gregDpy = sys.localDay > 0 ? sys.Y1 / (sys.localDay / 24) : null;
+  const gregWorks = !isLocked && gregDpy !== null && Math.abs(gregDpy - 365.2425) < 0.02;
 
   // 岁余（三余之一）：同《四分历》「岁余四分之一」逻辑，适用任意行星
   const daysPerYear = (!isLocked && !dayExceedsYear && sys.localDay > 0)
@@ -459,7 +462,7 @@ function Detail({ sys, lang }) {
                 <Badge text={`${s.mode} ${s.label}`} color={s.color} />
               </div>
               <div style={{ fontSize: 12, fontFamily: "var(--mono)", color: "var(--dim2)", marginTop: 4 }}>
-                Tᵢ={s.Ti}d · {s.cyclesPerYear.toFixed(1)} {t.cyclesPerYear} · Tᵢ/Z={(s.ratioZ * 100).toFixed(1)}%
+                Tᵢ={s.Ti.toFixed(4)}d · {s.cyclesPerYear.toFixed(1)} {t.cyclesPerYear} · Tᵢ/Z={(s.ratioZ * 100).toFixed(1)}%
               </div>
               <div style={{ fontSize: 11, color: "var(--dim)", marginTop: 2 }}>{s.reason}</div>
             </div>
@@ -517,12 +520,14 @@ function Detail({ sys, lang }) {
           <div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--fg)", lineHeight: 1.8 }}>
             {(() => {
               const e = sys.eccentricity;
+              // 角动量守恒：v_p·r_p = v_a·r_a → v_p/v_a = (1+e)/(1−e)
               const vRatio = (1+e)/(1-e);
+              // 近/远日点瞬时角速度 ω = n·√(1−e²)/(1∓e)² → 扫过15°黄经所需时间
               const zMin = a.Z * (1-e)*(1-e) / Math.sqrt(1-e*e);
               const zMax = a.Z * (1+e)*(1+e) / Math.sqrt(1-e*e);
               return <>
                 <div>{t.meanZ} Z̄ = {a.Z.toFixed(3)} {t.days}</div>
-                <div>{t.periVeloRatio} ≈ {Math.sqrt(vRatio).toFixed(3)}</div>
+                <div>{t.periVeloRatio} = (1+e)/(1−e) ≈ {vRatio.toFixed(3)}</div>
                 <div>Z({t.zPeri}) ≈ {zMin.toFixed(2)}d ({t.short}) · Z({t.zAph}) ≈ {zMax.toFixed(2)}d ({t.long})</div>
                 <div style={{ color: "var(--dim2)", marginTop: 4 }}>{e > 0.2 ? t.highEccNote : t.lowEccNote}</div>
               </>;
