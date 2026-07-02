@@ -5,6 +5,9 @@ title: "Huaxia-Li: Universal Planetary Formula — Interactive Verification Tool
 authors:
   - family-names: "Jia"
     given-names: "Runzhang"
+doi: "10.5281/zenodo.21133058"
+version: "v1.1.0"
+date-released: "2026-07-02"
 repository-code: "https://github.com/rjialondon/Huaxia-Li"
 url: "https://rjialondon.github.io/Huaxia-Li/"
 license: Apache-2.0

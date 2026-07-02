@@ -2,6 +2,7 @@
 # Huaxia Calendar — Interactive Verification Tools
 
 [![verify](https://github.com/rjialondon/Huaxia-Li/actions/workflows/verify.yml/badge.svg)](https://github.com/rjialondon/Huaxia-Li/actions/workflows/verify.yml)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21133058.svg)](https://doi.org/10.5281/zenodo.21133058)
 
 **Live Demo:** https://rjialondon.github.io/Huaxia-Li/
 
@@ -72,7 +73,10 @@ Jia Runzhang (2026). *The Huaxia Li (华夏历): A Misclassified Planetary Timek
 
 ## Citing
 
-See [`CITATION.cff`](CITATION.cff) (GitHub renders a "Cite this repository" button). Please cite the paper DOI above for the methodology, and the repository for the tools and verification scripts.
+See [`CITATION.cff`](CITATION.cff) (GitHub renders a "Cite this repository" button). Please cite the paper DOI above for the methodology, and the software archive for the tools and verification scripts:
+
+- Code (all versions): https://doi.org/10.5281/zenodo.21133058
+- Code (v1.1.0 snapshot): https://doi.org/10.5281/zenodo.21133059
 
 ## Deploy
 
