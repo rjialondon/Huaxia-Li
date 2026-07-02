@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { bestRational, gregorianWorks } from "./formula.js";
 
 // ── i18n ──
 const L = {
@@ -235,18 +236,7 @@ const L = {
   },
 };
 
-// ── HELPERS ──
-function bestRational(frac, maxDenom = 100) {
-  let best = { p: 1, q: 1, err: Math.abs(1 - frac) };
-  for (let q = 1; q <= maxDenom; q++) {
-    const p = Math.round(frac * q);
-    if (p <= 0) continue;
-    const err = Math.abs(p / q - frac);
-    if (err < best.err) best = { p, q, err };
-    if (err < 1e-6) break;
-  }
-  return best;
-}
+// ── HELPERS ── 共享实现见 formula.js
 
 // ── PRESETS ──
 // N = 节气分段数：太阳侧分辨率的独立约定（黄道 360° 等分 N 份，偶数使节/气成对）。
@@ -295,7 +285,9 @@ const PRESETS = {
   },
   extreme: {
     stars: [{ name: "Star X", mass: 1.0 }],
-    Y1: 365.25, localDay: 24, ecc: 0.95, locked: false, N: 24,
+    // Y1 刻意避开 365.2425±0.02：此预设演示开普勒极端效应，
+    // 复用地球年长会让公历判据"意外可工作"，模糊教学重点
+    Y1: 400.25, localDay: 24, ecc: 0.95, locked: false, N: 24,
     sats: [], overlays: [], binaryPeriod: 0,
   },
 };
@@ -371,10 +363,8 @@ function compute(state) {
     intercalary = { monthsPerYear: mpy, fraction: frac, interval: frac > 0 ? 1 / frac : Infinity };
   }
 
-  // 公历判据：公历是把地球参数硬编码进结构的纯太阳历，与卫星无关——
-  // 可工作 ⇔ 年长 ≈ 365.2425 本地日（97/400闰日规则拟合的常数）。
-  // 容差 ±0.02（漂移 < 1日/50本地年），覆盖回归/恒星/儒略三种地球年口径。
-  const gregWorks = !locked && Math.abs(Y1 - 365.2425) < 0.02;
+  // 公历判据见 formula.js gregorianWorks（Y1 已是本地日计数年长）
+  const gregWorks = gregorianWorks(Y1, locked);
 
   // ── 三余结构（中国古历核心架构）──────────────────────────────────
   // 朔余：Tᵢ 非整数 → round(k·Tᵢ)−round((k−1)·Tᵢ) → 大月30/小月29交替
@@ -857,8 +847,9 @@ export default function CustomCalculator({ lang }) {
               <InputRow label={t.stellarYear}><NumInput value={state.Y1} onChange={v => set("Y1", v)} min={0.1} /></InputRow>
               <InputRow label={t.localDay}><NumInput value={state.localDay} onChange={v => set("localDay", v)} min={0.1} /></InputRow>
               <InputRow label={t.ecc}><NumInput value={state.ecc} onChange={v => set("ecc", v)} min={0} max={0.99} step={0.01} /></InputRow>
-              {/* 偶数 N：节/气成对（中气=偶数位节气），奇数会破坏无中气置闰的机制 */}
-              <InputRow label={t.solarTerms}><NumInput value={state.N} onChange={v => set("N", v)} min={4} max={360} step={2} /></InputRow>
+              {/* 偶数 N：节/气成对（中气=偶数位节气），奇数会破坏无中气置闰的机制。
+                  min/step 只拦微调箭头，手输值在 onChange 消毒（取偶、夹取 [4,360]） */}
+              <InputRow label={t.solarTerms}><NumInput value={state.N} onChange={v => set("N", Math.min(360, Math.max(4, 2 * Math.round(v / 2))))} min={4} max={360} step={2} /></InputRow>
               <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)", paddingLeft: 190, marginTop: -4, marginBottom: 8 }}>
                 {lang === "zh"
                   ? "N 是太阳侧约定；卫星受判于 N（月数/年 ∈ (N/2, N] ⇒ 甲型）"

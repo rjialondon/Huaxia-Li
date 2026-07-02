@@ -15,15 +15,22 @@ Independently recomputes all tables in Appendix A using JPL parameters:
 Run: `python3 verify_tables.py`  
 No external dependencies (standard library only).
 
+### solar_model.py
+Single source of truth for the simplified solar model shared by both scripts
+below: two-track decomposition (mean longitude at the tropical rate, mean
+anomaly at the anomalistic rate — their difference is the perihelion drift of
+~61.8″/yr, *derived* from the two year lengths, not hardcoded), equation of
+center to e³, and the common bisection root-finder. A mirrored JavaScript copy
+lives in `src/AphSim.jsx`; this module is the reference.
+
 ### aphelion_sim.py
-Kepler-equation simulation over 400 years × 12 initial phases, using a
-precession-correct two-track solar model (mean longitude at the tropical rate,
-mean anomaly at the anomalistic rate; equation of center to e³).
-Quantitatively verifies the aphelion clustering effect for intercalary months:
-approximately 50% of no-Zhongqi months fall in the leap-4/5/6 window;
-the months adjacent to the Winter Solstice almost never receive an intercalary
-insertion (5 + 0 of 1,782 over 400 yr × 12 phases — matching the real calendar,
-where a leap 11th month is a celebrated rarity, e.g. 2033).
+Kepler-equation simulation over 400 years × 12 initial phases on the shared
+model. Quantitatively verifies the aphelion clustering effect for intercalary
+months, with **machine-checked assertions** (non-zero exit, enforced in CI):
+leap-4/5/6 share within [40%, 60%] (paper §6: ~50%; measured 49.2%), and
+near-Winter-Solstice intercalary rate < 1% (measured 5 + 0 of 1,782 ≈ 0.28% —
+matching the real calendar, where a leap 11th month is a celebrated rarity,
+e.g. 2033).
 
 Run: `python3 aphelion_sim.py`  
 No external dependencies (standard library only).
@@ -31,10 +38,11 @@ No external dependencies (standard library only).
 **Reading the two clustering metrics.** The script reports aphelion clustering two ways,
 and they are different quantities:
 - *Leap-4/5/6 month window* ≈ 49.2% — this is the metric the paper's §6 "~50%" claim refers to.
-- *Aphelion half-year by sun longitude* (window [12.9°, 192.9°)) ≈ 84.0% — a direct
-  longitude-based measure with no corresponding claim in the paper. It shows the physical
-  clustering is substantially **stronger** than the month-number proxy suggests, because the
-  Sun spends more than half of each year traversing the aphelion half (Kepler's second law).
+- *Aphelion half-year by sun longitude* (window centered on the mid-run aphelion,
+  ≈ [16.4°, 196.4°)) ≈ 84.0% — a direct longitude-based measure with no corresponding
+  claim in the paper. It shows the physical clustering is substantially **stronger**
+  than the month-number proxy suggests, because the Sun spends more than half of each
+  year traversing the aphelion half (Kepler's second law).
 
 ### ephemeris_check.py
 Cross-checks the solar model against the **JPL DE421 ephemeris** (via Skyfield):

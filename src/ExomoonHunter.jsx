@@ -1,21 +1,5 @@
 import { useState, useMemo } from "react";
-
-function bestRational(frac, maxDenom = 100) {
-  let best = { p: 1, q: 1, err: Math.abs(1 - frac) };
-  for (let q = 1; q <= maxDenom; q++) {
-    const p = Math.round(frac * q);
-    if (p <= 0) continue;
-    const err = Math.abs(p / q - frac);
-    if (err < best.err) best = { p, q, err };
-    if (err < 1e-6) break;
-  }
-  return best;
-}
-
-// 恒星周期 → 朔望周期（相对宿主恒星的会合周期）
-// Tsid: 卫星绕行星的轨道周期(天); Y1: 行星年(天)
-// 受希尔球约束，受缚卫星必有 Tsid < Y1；护栏防异常输入除零/取负
-const toSynodic = (Tsid, Y1) => (Tsid > 0 && Tsid < Y1) ? 1 / (1 / Tsid - 1 / Y1) : Infinity;
+import { bestRational, toSynodic } from "./formula.js";
 
 const T = {
   zh: {
@@ -230,11 +214,13 @@ function analyzeCandidate(c) {
   const Tsyn = c.TiIsSynodic ? c.Ti_est : toSynodic(c.Ti_est, c.Y1);
   const TsynRange = c.Ti_range.map(t => c.TiIsSynodic ? t : toSynodic(t, c.Y1));
 
-  const inModeA = Tsyn >= lo && Tsyn < hi;
+  const inModeA = Number.isFinite(Tsyn) && Tsyn >= lo && Tsyn < hi;
   const tooFast = Tsyn < lo;
   const belowDay = Tsyn < localDayDays;
   const ratioZ = Tsyn / Z;
-  const rangeOverlapsA = TsynRange[0] < hi && TsynRange[1] >= lo;
+  // Infinity 哨兵（Tsid ≥ Y₁ 的异常输入）不得参与交集判定
+  const rangeOverlapsA = Number.isFinite(TsynRange[0]) && Number.isFinite(TsynRange[1])
+    && TsynRange[0] < hi && TsynRange[1] >= lo;
   const idealness = ratioZ;
 
   const daysPerYear = c.localDay > 0 ? c.Y1 / (c.localDay / 24) : null;
@@ -325,14 +311,17 @@ function CandidateCard({ c, t, lang }) {
 
       {/* Parameters */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8, marginBottom: 12 }}>
-        {[
+        {(() => {
+          const fmt = (x, d) => Number.isFinite(x) ? x.toFixed(d) : "∞";
+          return [
           [`Y₁ ${t.planetYear}`, c.Y1 > 1000 ? `${(c.Y1/365.25).toFixed(1)} ${t.earthYears}` : `${c.Y1.toFixed(2)} ${t.days}`],
           [t.zhongqi, `${a.Z.toFixed(2)} ${t.days}`],
           [t.modeARange, `${a.lo.toFixed(1)}–${a.hi.toFixed(1)} ${t.days}`],
-          [t.tiEst, `${a.Tsyn.toFixed(2)} ${t.days}`],
-          [t.tiRatio, `${(a.ratioZ * 100).toFixed(1)}%`],
-          [t.tiRange, `${a.TsynRange[0].toFixed(1)}–${a.TsynRange[1].toFixed(1)} ${t.days}`],
-        ].map(([label, val], i) => (
+          [t.tiEst, `${fmt(a.Tsyn, 2)} ${t.days}`],
+          [t.tiRatio, `${fmt(a.ratioZ * 100, 1)}%`],
+          [t.tiRange, `${fmt(a.TsynRange[0], 1)}–${fmt(a.TsynRange[1], 1)} ${t.days}`],
+          ];
+        })().map(([label, val], i) => (
           <div key={i} style={{ background: "var(--cell)", borderRadius: 8, padding: "7px 11px" }}>
             <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)" }}>{label}</div>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--fg)" }}>{val}</div>

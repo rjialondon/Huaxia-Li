@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { bestRational, toSynodic, gregorianWorks } from "./formula.js";
 
 // =============================================
 // i18n BILINGUAL SUPPORT
@@ -299,23 +300,7 @@ const SYSTEMS = [
   },
 ];
 
-// ── HELPERS ──
-function bestRational(frac, maxDenom = 100) {
-  let best = { p: 1, q: 1, err: Math.abs(1 - frac) };
-  for (let q = 1; q <= maxDenom; q++) {
-    const p = Math.round(frac * q);
-    if (p <= 0) continue;
-    const err = Math.abs(p / q - frac);
-    if (err < best.err) best = { p, q, err };
-    if (err < 1e-6) break;
-  }
-  return best;
-}
-
-// 恒星周期 → 朔望周期（相对宿主恒星的会合周期）
-// Tsid: 卫星绕行星的轨道周期(天); Y1: 行星年(天)
-// 受希尔球约束，受缚卫星必有 Tsid < Y1；护栏防异常输入除零/取负
-const toSynodic = (Tsid, Y1) => (Tsid > 0 && Tsid < Y1) ? 1 / (1 / Tsid - 1 / Y1) : Infinity;
+// ── HELPERS ── 共享实现见 formula.js
 
 // ── FORMULA ENGINE ──
 function classify(Ti, Y1, localDayHours, lang, N) {
@@ -323,6 +308,8 @@ function classify(Ti, Y1, localDayHours, lang, N) {
   const localDayDays = localDayHours / 24;
   const lo = Y1 / N;
   const hi = (2 * Y1) / N;
+  // toSynodic 对 Tsid ≥ Y1 返回 Infinity：数据错误，显式标出而非按"过慢"归类
+  if (!Number.isFinite(Ti)) return { mode: "∅", label: lang==="zh"?"无效输入":"invalid input", color: "#ef4444", reason: lang==="zh"?"Tsid ≥ Y₁ — 受缚卫星不可能（希尔球）":"Tsid ≥ Y₁ — impossible for a bound satellite (Hill sphere)" };
   if (Ti < localDayDays) return { mode: "∅", label: t.subDiurnal, color: "#6b7280", reason: `Tᵢ(${Ti.toFixed(3)}d) < ${lang==="zh"?"本地日":"local day"}(${localDayDays.toFixed(2)}d)` };
   if (Ti >= lo && Ti < hi) return { mode: lang==="zh"?"甲型A":"Mode A", label: t.modeAIntercalary, color: "#10b981", reason: `${lo.toFixed(2)} ≤ ${Ti.toFixed(3)} < ${hi.toFixed(2)}` };
   if (Ti < lo) return { mode: lang==="zh"?"乙型B":"Mode B", label: t.modeBFast, color: "#3b82f6", reason: `Tᵢ(${Ti.toFixed(3)}d) < ${lang==="zh"?"下限":"lower"}(${lo.toFixed(2)}d)` };
@@ -361,11 +348,8 @@ function analyze(sys, lang) {
   else if (sys.satellites.length === 0) formulaOutput = { type: t.pureSolar, icon: "→", color: "#f59e0b" };
   else formulaOutput = { type: t.solarPlus(modeB.length), icon: "→", color: "#3b82f6" };
 
-  // 公历判据：公历是把地球参数硬编码进结构的纯太阳历，与卫星无关——
-  // 可工作 ⇔ 行星的本地日计数年长 ≈ 365.2425（97/400闰日规则拟合的常数）。
-  // 容差 ±0.02 本地日/年（漂移 < 1日/50本地年），覆盖回归/恒星/儒略三种地球年口径。
-  const gregDpy = sys.localDay > 0 ? sys.Y1 / (sys.localDay / 24) : null;
-  const gregWorks = !isLocked && gregDpy !== null && Math.abs(gregDpy - 365.2425) < 0.02;
+  // 公历判据见 formula.js gregorianWorks（本地日计数年长 ≈ 365.2425）
+  const gregWorks = gregorianWorks(sys.localDay > 0 ? sys.Y1 / (sys.localDay / 24) : null, isLocked);
 
   // 岁余（三余之一）：同《四分历》「岁余四分之一」逻辑，适用任意行星
   const daysPerYear = (!isLocked && !dayExceedsYear && sys.localDay > 0)

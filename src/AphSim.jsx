@@ -89,7 +89,8 @@ function runSim() {
         for (const [tM, isInt] of yearMonths) {
           if (!isInt) { reg++; prev = reg; }
           else if (tM > 0 && tM < N_YEARS * Y_TROP) {
-            const lon = sunLon(tM % Y_ANOM);
+            // 不可 % Y_ANOM：双轨模型不再以近点年为周期（回归项每近点年多走0.0172°）
+            const lon = sunLon(tM);
             byMonth[prev]++;
             byLon[Math.floor(lon / 30)]++;
             total++;
@@ -357,7 +358,7 @@ export default function AphSim({ lang = "zh" }) {
             {
               label: t.claimWS,
               value: `${ws11} + ${ws12} = ${ws11 + ws12}`,
-              note: `${t.expected}: ≈0 (${((ws11 + ws12) / total * 100).toFixed(2)}%)`,
+              note: `${t.expected}: ≈0 (${total > 0 ? ((ws11 + ws12) / total * 100).toFixed(2) : "—"}%)`,
               // 论文主张"极罕"：按占比判定（<1%），不押死绝对计数——
               // 现实对照：真实历法中闰十一月确有孤例（2033年）
               ok: total > 0 && (ws11 + ws12) / total < 0.01,

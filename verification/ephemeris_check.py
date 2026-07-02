@@ -1,73 +1,46 @@
 # -*- coding: utf-8 -*-
 """
 Ephemeris cross-check: solar-term (节气) crossing times from the repo's
-two-body Kepler model vs. the JPL DE421 ephemeris (via Skyfield).
+two-body model (verification/solar_model.py — the same module that powers
+aphelion_sim.py) vs. the JPL DE421 ephemeris via Skyfield.
 
 What is being tested
 --------------------
 The paper's §6 machinery rests on one physical claim: solar terms defined by
 ecliptic longitude are *unevenly spaced in time* exactly as Kepler's second
-law dictates (定气法). This script measures how closely the repo's simplified
-model (fixed perihelion longitude + equation of center to e³, as in
-aphelion_sim.py) tracks the real Sun.
+law dictates (定气法). This script measures how closely the shared model
+tracks the real Sun.
 
 Method: compute the instants when the Sun's apparent geocentric ecliptic
 longitude (of date) crosses each 15° multiple over a 2-year window, from
 DE421. Anchor the model at the first crossing, then compare every subsequent
 crossing. The residual isolates the model's *shape* error — precisely what
-the calendar layer consumes.
+the calendar layer consumes. The model uses the epoch-corrected perihelion
+longitude (solar_model.peri_lon_at); aphelion_sim.py uses the epoch-agnostic
+statistical value — same model function, one parameter.
 
 Interpretation: calendar decisions are day-granular. A model-vs-ephemeris
-agreement at the minutes level leaves three orders of magnitude of margin.
+agreement at the minutes level leaves ~2 orders of magnitude of margin.
 
 Requirements: pip install skyfield   (downloads de421.bsp, ~17 MB, once)
 Run: python3 ephemeris_check.py      (exit code 0 = within tolerance)
 """
 
-import math
 import os
 import sys
 
+from solar_model import Y_ANOM, Y_TROP, sun_lon, cross_time, peri_lon_at
+
 TOLERANCE_MIN = 30.0   # fail if any term deviates more than this (minutes)
 START_UTC = (2024, 3, 1)
-N_TERMS = 49           # 2 years of 15° crossings (+1 anchor)
+N_TERMS = 2 * 24 + 1   # two years of 15° crossings, +1 anchor
 
-# ── Repo model (kept in sync with aphelion_sim.py) ───────────────────────────
-Y_ANOM   = 365.2596    # anomalistic year, days
-Y_TROP   = 365.2422    # tropical year, days
-ECC      = 0.0167
-# Perihelion longitude, epoch-corrected to mid-window (aphelion_sim.py uses a
-# fixed 282.95 because its 400-yr statistics are epoch-agnostic; an absolute
-# comparison against a real ephemeris needs the epoch value):
-# ϖ(J2000) = 282.9373°, drifting +61.9″/yr relative to the equinox of date.
-_EPOCH_YR = START_UTC[0] + START_UTC[1] / 12.0 + 1.0   # mid of 2-yr window
-PERI_LON  = 282.9373 + 0.0172 * (_EPOCH_YR - 2000.0)
+# Epoch-corrected perihelion longitude at mid-window:
+_EPOCH_YR = START_UTC[0] + START_UTC[1] / 12.0 + 1.0
+PERI_LON  = peri_lon_at(_EPOCH_YR)
 
-def model_sun_lon(t):
-    """
-    Two-track model: mean longitude at the tropical rate, mean anomaly at the
-    anomalistic rate (their difference = perihelion drift vs equinox of date).
-    λ(t) = PERI_LON + 360°·t/Y_TROP + C(M), M = 2π·t/Y_ANOM; C to e³.
-    """
-    M = 2 * math.pi * t / Y_ANOM
-    e = ECC
-    C = ((2*e - e**3/4) * math.sin(M)
-         + (5*e**2/4)    * math.sin(2*M)
-         + (13*e**3/12)  * math.sin(3*M))
-    return (PERI_LON + 360.0 * t / Y_TROP + math.degrees(C)) % 360.0
-
-def model_cross_time(lon_target, t_approx, half_width=16.0):
-    lo, hi = t_approx - half_width, t_approx + half_width
-    def diff(t):
-        d = (model_sun_lon(t) - lon_target) % 360.0
-        return d - 360.0 if d > 180.0 else d
-    for _ in range(80):
-        mid = (lo + hi) / 2
-        if diff(mid) > 0:
-            hi = mid
-        else:
-            lo = mid
-    return (lo + hi) / 2
+def model_lon(t):
+    return sun_lon(t, peri_lon=PERI_LON)
 
 # ── Ephemeris side ────────────────────────────────────────────────────────────
 def main():
@@ -83,35 +56,24 @@ def main():
     eph = load("de421.bsp")
     earth, sun = eph["earth"], eph["sun"]
 
-    def eph_sun_lon(t):
+    def eph_sun_lon(tt_jd):
         """Apparent geocentric ecliptic longitude of date (°), per GB/T 33661-2017 定气."""
+        t = ts.tt_jd(tt_jd)
         lat, lon, _ = earth.at(t).observe(sun).apparent().frame_latlon(ecliptic_frame)
         return lon.degrees % 360.0
 
-    def eph_cross_time(lon_target, t_approx_tt):
-        lo, hi = t_approx_tt - 16.0, t_approx_tt + 16.0
-        def diff(tt):
-            d = (eph_sun_lon(ts.tt_jd(tt)) - lon_target) % 360.0
-            return d - 360.0 if d > 180.0 else d
-        for _ in range(60):
-            mid = (lo + hi) / 2
-            if diff(mid) > 0:
-                hi = mid
-            else:
-                lo = mid
-        return (lo + hi) / 2
-
     # Walk 15° crossings forward from START_UTC
     t0 = ts.utc(*START_UTC)
-    lon0 = eph_sun_lon(t0)
-    first_target = (math.ceil(lon0 / 15.0) * 15.0) % 360.0
+    lon0 = eph_sun_lon(t0.tt)
+    first_target = -(-lon0 // 15.0) * 15.0 % 360.0
     step_guess = 15.24  # mean days per 15°
 
     eph_times, targets = [], []
-    tt_guess = t0.tt + ((first_target - lon0) % 360.0) / 360.0 * 365.2422
+    tt_guess = t0.tt + ((first_target - lon0) % 360.0) / 360.0 * Y_TROP
     target = first_target
     for _ in range(N_TERMS):
-        tt = eph_cross_time(target, tt_guess)
+        # 30 iterations on a 32 d bracket → ~3e-8 d ≈ 3 ms, vs 30 min tolerance
+        tt = cross_time(eph_sun_lon, target, tt_guess, half_width=16.0, iters=30)
         eph_times.append(tt)
         targets.append(target)
         target = (target + 15.0) % 360.0
@@ -119,9 +81,9 @@ def main():
 
     # Model times for the same longitude sequence, anchored at the first crossing
     model_times = []
-    t_guess = ((targets[0] - PERI_LON) % 360.0) / 360.0 * Y_ANOM
+    t_guess = ((targets[0] - PERI_LON) % 360.0) / 360.0 * Y_TROP
     for tgt in targets:
-        tm = model_cross_time(tgt, t_guess)
+        tm = cross_time(model_lon, tgt, t_guess, half_width=16.0)
         model_times.append(tm)
         t_guess = tm + step_guess
 
@@ -130,7 +92,7 @@ def main():
                 for i in range(len(targets))]
 
     print("=" * 66)
-    print("  SOLAR-TERM TIMING: repo Kepler model vs JPL DE421 (Skyfield)")
+    print("  SOLAR-TERM TIMING: repo model (solar_model.py) vs JPL DE421")
     print(f"  window: {N_TERMS} crossings from {START_UTC[0]}-{START_UTC[1]:02d}-{START_UTC[2]:02d}, anchored at first crossing")
     print("=" * 66)
     print(f"  {'lon':>5}  {'DE421 (TT JD)':>16}  {'model Δ (min)':>14}")
@@ -141,7 +103,7 @@ def main():
     abs_errs = [abs(e) for e in errs_min[1:]]
     print("-" * 66)
     print(f"  max |Δ| = {max(abs_errs):.2f} min   mean |Δ| = {sum(abs_errs)/len(abs_errs):.2f} min")
-    print(f"  tolerance = {TOLERANCE_MIN:.0f} min (calendar decisions are day-granular: ~3 orders of margin)")
+    print(f"  tolerance = {TOLERANCE_MIN:.0f} min (calendar decisions are day-granular: ~2 orders of margin)")
 
     if max(abs_errs) > TOLERANCE_MIN:
         print("  RESULT: FAIL")
