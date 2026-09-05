@@ -1,4 +1,5 @@
 node_modules/
+node_modules.audit-baseline-link
 .DS_Store
 dist/
 verification/de421.bsp

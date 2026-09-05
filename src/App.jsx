@@ -13,13 +13,13 @@ const NAV = {
     annex: "数值验证",
     lang: "EN",
     heroTitle: "华夏历",
-    heroSub: "通用行星公式",
+    heroSub: "参数化历法 · 通用结构探索",
     heroFormula: "Universal Planetary Formula",
-    heroDesc: "一个从中国古代历法中提取的数学框架，用同一套结构处理任意行星系统的计时问题。",
-    heroDesc2: "以下三个交互工具使用真实天文数据验证公式的通用性。",
+    heroDesc: "华夏历：以日月合参、节候与并行周期组织时间，提出并实现参数化历法的实验框架。",
+    heroDesc2: "以华夏历法传统为研究根基，探索跨行星的共同结构。数值算例、历史复原和天文认证分别举证；有输出不等于通用性已获证明。",
     heroPrinciple: "设计原则：公式只含自由参数（Y₁·本地日·Tᵢ·N）。N 是太阳侧分辨率约定——24 只是地球实例的取值；判据检验卫星，不由卫星定义。",
     card1Title: "跨星系交叉验证",
-    card1Desc: "10个真实天文系统 — 从地球到环双星行星，从6天超短年到7170年超长周期。代入公式，全部有定义输出。公历仅在地球参数下可工作。",
+    card1Desc: "多组天体参数的分类演示。数据来源与模型假设须分别核实；年长匹配判据不判断公历能否执行，也不构成多体动力学认证。",
     card2Title: "甲型系外卫星猎手",
     card2Desc: "在已知系外卫星候选体中搜索满足置闰条件的甲型实例。Kepler-1625 b I：可能是地球月球之外的第二个甲型实例（该候选体本身尚存观测争议）。",
     card3Title: "自定义验算器",
@@ -41,13 +41,13 @@ const NAV = {
     annex: "Numerics",
     lang: "中文",
     heroTitle: "华夏历",
-    heroSub: "Universal Planetary Formula",
+    heroSub: "Parametric Calendars · Exploring a General Structure",
     heroFormula: "Huaxia Calendar",
-    heroDesc: "A mathematical framework extracted from the ancient Chinese calendar, capable of handling timekeeping for any planetary system with a single unified structure.",
-    heroDesc2: "Three interactive tools below verify the formula's universality using real astronomical data.",
+    heroDesc: "Huaxia Li organizes time through solar–lunar relations, seasonal markers and parallel cycles, and implements an experimental parametric calendar framework.",
+    heroDesc2: "Rooted in the Huaxia calendrical tradition, this project explores common structures across planets. Numerical examples, historical reconstruction and astronomical validation require separate evidence. Defined output is not proof of universality.",
     heroPrinciple: "Design principle: the formula carries only free parameters (Y₁, local day, Tᵢ, N). N is a solar-side resolution convention — 24 is merely Earth's instance value; the criterion tests satellites, it is not defined by them.",
     card1Title: "Cross-System Verification",
-    card1Desc: "10 real astronomical systems — from Earth to circumbinary planets, from 6-day ultra-short years to 7,170-year ultra-long periods. All produce defined output. Gregorian works only for Earth.",
+    card1Desc: "Classification demonstrations using multiple celestial parameter sets. Sources and assumptions require separate checks. A year-length match is neither a test of Gregorian executability nor a many-body validation.",
     card2Title: "Mode A Exomoon Hunter",
     card2Desc: "Searching known exomoon candidates for Mode A intercalary eligibility. Kepler-1625 b I: potentially the second Mode A instance beyond Earth's Moon (the candidate itself remains observationally disputed).",
     card3Title: "Custom Calculator",
@@ -234,6 +234,10 @@ export default function App() {
       </nav>
 
       {/* Page content */}
+      <aside style={{ maxWidth: 960, margin: "16px auto", padding: "14px 18px", border: "1px solid #d4a84366", borderRadius: 8, lineHeight: 1.7 }}>
+        <strong>{lang === "zh" ? "本地修订预览 · 尚未发布" : "Local revision preview · Unreleased"}</strong>
+        <div>{lang === "zh" ? "已发表论文保留原貌；本版追加纠错。工具仍为理想化实验：平均周期分型不是置闰定理，多星配置不是多体解算，月表不是认证民用历。部分旧工具措辞仍在逐项修订。欢迎历算、天文与版本校勘研究者复核这些具体缺口。" : "The published paper remains unchanged; corrections are additive. These are idealized experiments: mean-period classification is not an intercalation theorem, multi-star configuration is not a many-body solver, and month tables are not certified civil calendars. Some legacy tool wording remains under review. Researchers in calendrical computation, astronomy and textual criticism are invited to examine these specific gaps."}</div>
+      </aside>
       <div>
         {page === "home" && <HomePage lang={lang} onNavigate={setPage} />}
         {page === "cross" && <CrossVerification lang={lang} />}

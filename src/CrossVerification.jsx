@@ -6,8 +6,8 @@ import { bestRational, toSynodic, gregorianWorks } from "./formula.js";
 // =============================================
 const T = {
   zh: {
-    title: "华夏历 · 通用行星公式 · 跨星系交叉验证",
-    subtitle: "真实天文数据验算",
+    title: "华夏历 · 跨系统参数演示",
+    subtitle: "参数分类演示，不是天文适用性认证",
     detailView: "逐系统验算",
     summaryView: "汇总矩阵",
     langToggle: "EN",
@@ -22,24 +22,24 @@ const T = {
     multiStar: (m) => `多恒星层 Θ₁…Θ${m} (m=${m})`,
     primaryStar: "主恒星",
     companionStar: "伴星/乙型叠合",
-    multiStarNote: "公式处理：Θ₁定义主恒星年和节气，Θ₂(伴星角位置)作为独立乙型叠合层运行。行星绕双星质心运行时，Θ应相对于质心定义。",
+    multiStarNote: "多星仅列参数与叠合概念；本页未求解多体轨道或伴星视位置。",
     satClass: "卫星分类 ΦA / ΦB",
-    noSat: (locked) => `无已知卫星 (n=0) — ${locked ? "潮汐锁定行星通常无法维持稳定卫星轨道" : "该行星无天然卫星"}`,
+    noSat: () => "本条未录入卫星参数；不据此断言无卫星",
     overlayBodies: "附加叠合体:",
     periodRatio: "周期比",
     localYears: "本地年",
-    intercalary: "置闰验算",
+    intercalary: "平均周期比（不是置闰计数）",
     monthsPerYear: "月/年",
     intMonths: "整数月数",
     annualFrac: "年余分",
-    intercalaryFreq: "置闰频率",
+    intercalaryFreq: "余分倒数（非置闰间隔）",
     perYear: "年",
     perLocalYear: "本地年",
     leapDayTitle: "岁余 · 置闰日",
     leapDayPerYear: "年长（本地日）",
     leapDayFrac: "岁余",
     leapDayCycle: (p, q) => `每 ${q} 年插 ${p} 个闰日`,
-    zhangVerify: (p, q) => `最优章法 (${p}/${q})：`,
+    zhangVerify: (p, q) => `余分有理近似 (${p}/${q})：`,
     error: "误差",
     keplerEffect: "开普勒效应",
     meanZ: "平均中气间隔",
@@ -48,15 +48,15 @@ const T = {
     zAph: "远日点",
     short: "短",
     long: "长",
-    highEccNote: "⚠ 高离心率：节气间隔时间变化剧烈，置闰自动聚集于远日点。Dingqi (定气) 角度定义自动适应。",
-    lowEccNote: "节气间隔有可检测的时间变化，置闰倾向聚集于远日点附近。",
+    highEccNote: "高偏心率会改变等角节气间隔；空月分布仍须按事件、相位及月界逐项计算。",
+    lowEccNote: "节气时距可能变化；本页未直接求出实际置闰分布。",
     formulaOutput: "公式输出 Cp",
     huaxiaOutput: "华夏历输出",
-    gregCompat: "公历：专为此参数设计，可工作 ✓",
-    gregFail: "公历：结构崩溃 ✗ — 无法处理此行星参数",
+    gregCompat: "年长接近公历平均年（演示判据）",
+    gregFail: "不满足年长匹配判据；不表示公历不能执行",
     emptySet: "空集",
-    summaryTitle: "交叉验证汇总",
-    colSystem: "系统", colM: "m", colN: "n", colModeA: "甲型", colModeB: "乙型", colOutput: "输出", colGreg: "公历",
+    summaryTitle: "参数演示汇总",
+    colSystem: "系统", colM: "m", colN: "n", colModeA: "甲型", colModeB: "乙型", colOutput: "输出", colGreg: "年长匹配",
     tidallyLocked: "潮汐锁定",
     days: "天",
     hours: "h",
@@ -86,8 +86,8 @@ const T = {
     },
   },
   en: {
-    title: "Huaxia Calendar · Universal Planetary Formula · Cross-System Verification",
-    subtitle: "Verified with real astronomical data",
+    title: "Huaxia Li · Cross-System Parameter Demonstrations",
+    subtitle: "Parameter classification, not astronomical certification",
     detailView: "Per-System",
     summaryView: "Summary Matrix",
     langToggle: "中文",
@@ -102,24 +102,24 @@ const T = {
     multiStar: (m) => `Multi-Star Layer Θ₁…Θ${m} (m=${m})`,
     primaryStar: "Primary Star",
     companionStar: "Companion / Mode B Overlay",
-    multiStarNote: "Formula: Θ₁ defines the primary stellar year and solar terms; Θ₂ (companion angular position) runs as an independent Mode B overlay. For circumbinary orbits, Θ is defined relative to the barycenter.",
+    multiStarNote: "Multiple stars are parameter and overlay concepts here; no many-body orbit or companion apparent-position solution is computed.",
     satClass: "Satellite Classification ΦA / ΦB",
-    noSat: (locked) => `No known satellites (n=0) — ${locked ? "Tidally locked planets generally cannot sustain stable satellite orbits" : "This planet has no natural satellites"}`,
+    noSat: () => "No satellite parameters entered; this is not proof of absence",
     overlayBodies: "Additional overlay bodies:",
     periodRatio: "Period ratio",
     localYears: "local years",
-    intercalary: "Intercalary Verification",
+    intercalary: "Mean cycle ratio (not intercalation counts)",
     monthsPerYear: "months/year",
     intMonths: "Integer months",
     annualFrac: "Annual fraction",
-    intercalaryFreq: "Intercalary frequency",
+    intercalaryFreq: "Reciprocal fraction (not a leap interval)",
     perYear: "years",
     perLocalYear: "local years",
     leapDayTitle: "Day Surplus · Leap Day (岁余)",
     leapDayPerYear: "Year (local days)",
     leapDayFrac: "Day surplus (岁余)",
     leapDayCycle: (p, q) => `${p} leap day(s) per ${q} years`,
-    zhangVerify: (p, q) => `Best Zhang Period (${p}/${q}):`,
+    zhangVerify: (p, q) => `Rational fraction approximation (${p}/${q}):`,
     error: "Error",
     keplerEffect: "Keplerian Effect",
     meanZ: "Mean Zhongqi interval",
@@ -128,15 +128,15 @@ const T = {
     zAph: "Aphelion",
     short: "short",
     long: "long",
-    highEccNote: "⚠ High eccentricity: solar term intervals vary dramatically; intercalary insertions cluster near aphelion automatically. Dingqi (true solar term) angular definition adapts without modification.",
-    lowEccNote: "Solar term intervals show detectable variation; intercalary insertions tend to cluster near aphelion.",
+    highEccNote: "High eccentricity changes equal-angle term spacing; empty months still require event, phase and boundary calculations.",
+    lowEccNote: "Term spacing may vary; this page does not compute an actual intercalation distribution.",
     formulaOutput: "Formula Output Cp",
     huaxiaOutput: "Huaxia Li Output",
-    gregCompat: "Gregorian: Designed for these parameters, works ✓",
-    gregFail: "Gregorian: Structural collapse ✗ — Cannot handle these planetary parameters",
+    gregCompat: "Year length near Gregorian mean (demo criterion)",
+    gregFail: "Year-length criterion not met; Gregorian rules remain executable",
     emptySet: "∅ empty",
-    summaryTitle: "Cross-Verification Summary",
-    colSystem: "System", colM: "m", colN: "n", colModeA: "Mode A", colModeB: "Mode B", colOutput: "Output", colGreg: "Greg.",
+    summaryTitle: "Parameter Demonstration Summary",
+    colSystem: "System", colM: "m", colN: "n", colModeA: "Mode A", colModeB: "Mode B", colOutput: "Output", colGreg: "Year match",
     tidallyLocked: "Tidally Locked",
     days: "days",
     hours: "h",
@@ -309,7 +309,7 @@ function classify(Ti, Y1, localDayHours, lang, N) {
   const lo = Y1 / N;
   const hi = (2 * Y1) / N;
   // toSynodic 对 Tsid ≥ Y1 返回 Infinity：数据错误，显式标出而非按"过慢"归类
-  if (!Number.isFinite(Ti)) return { mode: "∅", label: lang==="zh"?"无效输入":"invalid input", color: "#ef4444", reason: lang==="zh"?"Tsid ≥ Y₁ — 受缚卫星不可能（希尔球）":"Tsid ≥ Y₁ — impossible for a bound satellite (Hill sphere)" };
+  if (!Number.isFinite(Ti)) return { mode: "∅", label: lang==="zh"?"无效输入":"invalid input", color: "#ef4444", reason: lang==="zh"?"周期超出当前顺行会合近似的输入域":"Outside the current prograde synodic approximation domain" };
   if (Ti < localDayDays) return { mode: "∅", label: t.subDiurnal, color: "#6b7280", reason: `Tᵢ(${Ti.toFixed(3)}d) < ${lang==="zh"?"本地日":"local day"}(${localDayDays.toFixed(2)}d)` };
   if (Ti >= lo && Ti < hi) return { mode: lang==="zh"?"甲型A":"Mode A", label: t.modeAIntercalary, color: "#10b981", reason: `${lo.toFixed(2)} ≤ ${Ti.toFixed(3)} < ${hi.toFixed(2)}` };
   if (Ti < lo) return { mode: lang==="zh"?"乙型B":"Mode B", label: t.modeBFast, color: "#3b82f6", reason: `Tᵢ(${Ti.toFixed(3)}d) < ${lang==="zh"?"下限":"lower"}(${lo.toFixed(2)}d)` };
@@ -476,12 +476,12 @@ function Detail({ sys, lang }) {
           <div style={{ fontSize: 13, fontFamily: "var(--mono)", lineHeight: 2, color: "var(--fg)" }}>
             <div>Y₁/Tᵢ = {a.intercalary.monthsPerYear.toFixed(4)} {t.monthsPerYear}</div>
             <div>{t.annualFrac} = {a.intercalary.fraction.toFixed(4)}</div>
-            <div>{t.intercalaryFreq} ≈ 1/{a.intercalary.intervalYears.toFixed(2)} {sys.id === "earth" ? t.perYear : t.perLocalYear}</div>
+            <div>{t.intercalaryFreq} ≈ {a.intercalary.intervalYears.toFixed(2)} {sys.id === "earth" ? t.perYear : t.perLocalYear}</div>
             {(() => {
               const br = bestRational(a.intercalary.fraction);
               return (
                 <div style={{ marginTop: 8, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
-                  <b>{t.zhangVerify(br.p, br.q)}</b> {br.p}/{br.q} = {(br.p/br.q).toFixed(5)} vs {a.intercalary.fraction.toFixed(5)} → {t.error} = {(Math.abs(br.p/br.q - a.intercalary.fraction)/a.intercalary.fraction*100).toFixed(3)}%
+                  <b>{t.zhangVerify(br.p, br.q)}</b> {br.p}/{br.q} = {(br.p/br.q).toFixed(5)} vs {a.intercalary.fraction.toFixed(5)} → {t.error} = {(a.intercalary.fraction === 0 ? 0 : Math.abs(br.p/br.q - a.intercalary.fraction)/a.intercalary.fraction*100).toFixed(3)}%
                 </div>
               );
             })()}
@@ -620,6 +620,9 @@ export default function CrossVerification({ lang }) {
         </div>
 
         {/* View toggle */}
+        <aside style={{ padding: 14, marginBottom: 18, border: "1px solid #d4a84366", borderRadius: 8, lineHeight: 1.7, fontSize: 12 }}>
+          {lang === "zh" ? "数据核读进行中：本页旧预设的每个数字、年口径及来源表号尚未逐项认证。Y₁和卫星周期以地球日输入，本地日以小时输入；会合换算仅用同向、共面、匀角速度近似，不是一般三维月相解。年余分不等于实际空月数。" : "Data review in progress: individual preset values, year conventions and source tables are not yet fully verified. Y₁ and satellite periods use Earth days; local days use hours. Synodic conversion assumes prograde coplanar uniform angular motion, not general 3D lunar phases. Fractional yearly ratios are not empty-month counts."}
+        </aside>
         <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 20 }}>
           {[["detail", t.detailView], ["summary", t.summaryView]].map(([v, label]) => (
             <button key={v} onClick={() => setView(v)} style={{

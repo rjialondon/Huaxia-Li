@@ -1,5 +1,8 @@
-import { useState, useCallback } from "react";
-import { bestRational, gregorianWorks } from "./formula.js";
+import { useState, useCallback, useMemo } from "react";
+import { bestRational } from "./formula.js";
+import { evaluateModel } from "./core/模型.mjs";
+import { PRESETS } from "./core/预设.mjs";
+import { LIMITS } from "./core/参数校验.mjs";
 
 // ── i18n ──
 const L = {
@@ -46,11 +49,11 @@ const L = {
     tooSlow: "周期过慢",
     subDiurnal: "亚昼夜",
     cyclesPerYear: "周期/年",
-    intercalary: "置闰预测",
+    intercalary: "平均周期比（不是置闰计数）",
     monthsPerYear: "月/年",
     fraction: "年余分",
-    leapFreq: "置闰频率 ≈ 每",
-    localYears: "本地年一次",
+    leapFreq: "余分倒数 ≈",
+    localYears: "本地年（非实际置闰间隔）",
     leapDayTitle: "岁余 · 置闰日",
     leapDayPerYear: "年长（本地日）",
     leapDayFrac: "岁余",
@@ -60,8 +63,8 @@ const L = {
     luniSolar: "阴阳合历",
     pureSolar: "纯太阳历 (n=0)",
     solarPlus: (n) => `太阳历 + ${n}乙型计数轨`,
-    gregOk: "公历：可工作 ✓",
-    gregFail: "公历：结构崩溃 ✗",
+    gregOk: "年长接近公历平均年 ✓",
+    gregFail: "不满足此年长匹配判据（非公历失效）",
     emptySet: "空集",
     keplerNote: "开普勒效应",
     highEcc: "高离心率：置闰自动聚集于远日点",
@@ -89,12 +92,12 @@ const L = {
     rStars: "恒星层",
     rSats: "卫星分类",
     rNoSat: "无卫星 (n=0)",
-    rIntercalary: "置闰预测",
+    rIntercalary: "平均周期比（不是置闰计数）",
     rIntMonth: "整数月数",
     rFrac: "年余分",
-    rFreq: "置闰频率 ≈ 每",
-    rLocalYr: "本地年一次",
-    rZhang: "最优章法近似",
+    rFreq: "余分倒数 ≈",
+    rLocalYr: "本地年（非实际置闰间隔）",
+    rZhang: "余分有理近似（非已证章法）",
     rOverlays: "乙型叠合体",
     rOutput: "公式输出",
     rCalType: "历法类型",
@@ -161,11 +164,11 @@ const L = {
     tooSlow: "Too slow",
     subDiurnal: "Sub-diurnal",
     cyclesPerYear: "cycles/yr",
-    intercalary: "Intercalary Prediction",
+    intercalary: "Mean cycle ratio (not an intercalation count)",
     monthsPerYear: "months/year",
     fraction: "Annual fraction",
-    leapFreq: "Intercalary frequency ≈ every",
-    localYears: "local years",
+    leapFreq: "Reciprocal fraction ≈",
+    localYears: "local years (not a leap interval)",
     leapDayTitle: "Day Surplus · Leap Day (岁余)",
     leapDayPerYear: "Year (local days)",
     leapDayFrac: "Day surplus (岁余)",
@@ -175,8 +178,8 @@ const L = {
     luniSolar: "Lunisolar Calendar",
     pureSolar: "Pure Solar Calendar (n=0)",
     solarPlus: (n) => `Solar + ${n} Mode B tracks`,
-    gregOk: "Gregorian: Works ✓",
-    gregFail: "Gregorian: Structural collapse ✗",
+    gregOk: "Year length near Gregorian mean ✓",
+    gregFail: "Year-length criterion not met (not calendar failure)",
     emptySet: "∅ empty",
     keplerNote: "Keplerian Effect",
     highEcc: "High eccentricity: intercalary insertions cluster near aphelion automatically",
@@ -203,12 +206,12 @@ const L = {
     rStars: "Stellar Layer",
     rSats: "Satellite Classification",
     rNoSat: "No satellites (n=0)",
-    rIntercalary: "Intercalary Prediction",
+    rIntercalary: "Mean cycle ratio (not an intercalation count)",
     rIntMonth: "Integer months",
     rFrac: "Annual fraction",
-    rFreq: "Intercalary frequency ≈ every",
-    rLocalYr: "local years",
-    rZhang: "Best Zhang Approximation",
+    rFreq: "Reciprocal fraction ≈",
+    rLocalYr: "local years (not a leap interval)",
+    rZhang: "Rational approximation (not a certified cycle)",
     rOverlays: "Mode B Overlays",
     rOutput: "Formula Output",
     rCalType: "Calendar Type",
@@ -245,52 +248,6 @@ const L = {
 // 地球 N=24 恰好 = 2×月数(12.37)，是华夏历刻意利用的共振（无中气置闰机制最紧），
 //   属设计巧思而非判据前提；N = 2·round(Y₁/Tᵢ) 只是给新行星选共振最优 N 的启发式。
 // ⚠  慎重修改：N 牵动 Z、lo、hi、历法表全部导出量，改之前先确认意图。
-const PRESETS = {
-  // Y1 和 Tᵢ 均为本地日（行星自转次数）。localDay(小时) 仅作地球换算桥，可选。
-  earth: {
-    stars: [{ name: "Sun", mass: 1.0 }],
-    Y1: 365.25, localDay: 24, ecc: 0.0167, locked: false, N: 24,
-    sats: [{ name: "Moon", Ti: 29.5306 }],  // 地球本地日=1地球日，数值不变
-    overlays: [{ name: "Jupiter (岁星)", period: 11.862 }],
-    binaryPeriod: 0,
-  },
-  mars: {
-    stars: [{ name: "Sun", mass: 1.0 }],
-    // 1 火星日 = 24.66h = 1.0275 地球日；火星年 686.97÷1.0275 = 668.60 火星日
-    // Tᵢ 均为会合(朔望)周期：T_syn = 1/(1/T_sid − 1/Y₁)，再除以本地日换算
-    Y1: 668.60, localDay: 24.66, ecc: 0.0934, locked: false, N: 24,
-    sats: [{ name: "Phobos", Ti: 0.3105 }, { name: "Deimos", Ti: 1.2309 }],
-    overlays: [], binaryPeriod: 0,
-  },
-  jupiter: {
-    stars: [{ name: "Sun", mass: 1.0 }],
-    // 1 木星日 = 9.93h = 0.41375 地球日；木星年 4332.6÷0.41375 = 10471 木星日
-    // Tᵢ 均为会合(朔望)周期换算（与输入框"朔望周期Tᵢ"口径一致）
-    Y1: 10471, localDay: 9.93, ecc: 0.0489, locked: false, N: 24,
-    sats: [{ name: "Io", Ti: 4.277 }, { name: "Europa", Ti: 8.590 }, { name: "Ganymede", Ti: 17.321 }, { name: "Callisto", Ti: 40.492 }, { name: "Himalia", Ti: 642.8 }],
-    overlays: [], binaryPeriod: 0,
-  },
-  tatooine: {
-    stars: [{ name: "Kepler-16A", mass: 0.69 }, { name: "Kepler-16B", mass: 0.20 }],
-    // localDay=24 假设；1本地日=1地球日，数值不变
-    Y1: 228.776, localDay: 24, ecc: 0.0069, locked: false, N: 24,
-    sats: [],
-    overlays: [{ name: "Binary orbit", period: 41.08 / 228.776 }],
-    binaryPeriod: 41.08,
-  },
-  custom: {
-    stars: [{ name: "Star A", mass: 1.0 }],
-    Y1: 100, localDay: 0, ecc: 0, locked: false, N: 24,
-    sats: [], overlays: [], binaryPeriod: 0,
-  },
-  extreme: {
-    stars: [{ name: "Star X", mass: 1.0 }],
-    // Y1 刻意避开 365.2425±0.02：此预设演示开普勒极端效应，
-    // 复用地球年长会让公历判据"意外可工作"，模糊教学重点
-    Y1: 400.25, localDay: 24, ecc: 0.95, locked: false, N: 24,
-    sats: [], overlays: [], binaryPeriod: 0,
-  },
-};
 
 function InputRow({ label, children }) {
   return (
@@ -303,7 +260,7 @@ function InputRow({ label, children }) {
 
 function NumInput({ value, onChange, min, max, step, style: extraStyle }) {
   return (
-    <input type="number" value={value} onChange={e => onChange(parseFloat(e.target.value) || 0)}
+    <input type="number" value={value} onChange={e => onChange(e.target.value === "" ? "" : Number(e.target.value))}
       min={min} max={max} step={step || "any"}
       style={{
         background: "var(--cell)", color: "var(--fg)", border: "1px solid var(--border)",
@@ -316,7 +273,7 @@ function NumInput({ value, onChange, min, max, step, style: extraStyle }) {
 
 function TextInput({ value, onChange }) {
   return (
-    <input type="text" value={value} onChange={e => onChange(e.target.value)}
+    <input type="text" maxLength={LIMITS.maxName} value={value} onChange={e => onChange(e.target.value)}
       style={{
         background: "var(--cell)", color: "var(--fg)", border: "1px solid var(--border)",
         borderRadius: 6, padding: "6px 10px", fontFamily: "var(--mono)", fontSize: 13,
@@ -328,59 +285,6 @@ function TextInput({ value, onChange }) {
 
 function Badge({ text, color }) {
   return <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12, background: color + "20", color, fontFamily: "var(--mono)" }}>{text}</span>;
-}
-
-// ── FORMULA ENGINE ──
-// Y1 和 Tᵢ 均以本地日为单位。localDay(小时) 仅用于推导时辰，可为 0。
-function compute(state) {
-  const { Y1, localDay, ecc, locked, N, sats, stars, overlays, binaryPeriod } = state;
-  const Z = (2 * Y1) / N;
-  const lo = Y1 / N;
-  const hi = Z;
-  // 年比一转还短 → 退化（如潮汐锁定极端情况）
-  const dayExceedsYear = Y1 < 1;
-  const shichenValid = !locked && !dayExceedsYear && localDay > 0;
-  const shichen = shichenValid ? localDay / 12 : null;
-
-  const classified = sats.map(s => {
-    const Ti = s.Ti;
-    let mode, label, color;
-    // Ti < 1 本地日 = 亚昼夜，公转快于自转，不参与历法
-    if (Ti < 1) { mode = "excluded"; label = "sub-diurnal"; color = "#6b7280"; }
-    else if (Ti >= lo && Ti < hi) { mode = "A"; label = "intercalary"; color = "#10b981"; }
-    else if (Ti < lo) { mode = "B"; label = "fast"; color = "#3b82f6"; }
-    else { mode = "B"; label = "slow"; color = "#3b82f6"; }
-    return { ...s, mode, label, color, cyclesPerYear: Y1 / Ti, ratioZ: Ti / Z };
-  });
-
-  const modeA = classified.filter(s => s.mode === "A");
-  const modeB = classified.filter(s => s.mode === "B");
-
-  let intercalary = null;
-  if (modeA.length > 0) {
-    const mpy = Y1 / modeA[0].Ti;
-    const frac = mpy - Math.floor(mpy);
-    intercalary = { monthsPerYear: mpy, fraction: frac, interval: frac > 0 ? 1 / frac : Infinity };
-  }
-
-  // 公历判据见 formula.js gregorianWorks（Y1 已是本地日计数年长）
-  const gregWorks = gregorianWorks(Y1, locked);
-
-  // ── 三余结构（中国古历核心架构）──────────────────────────────────
-  // 朔余：Tᵢ 非整数 → round(k·Tᵢ)−round((k−1)·Tᵢ) → 大月30/小月29交替
-  //   出处：古六历；《大衍历》（728年）；历代历法通用离散化法
-  // 章余：Y₁/Tᵢ 余分 → bestRational(frac) → p/q 章法，置闰月
-  //   出处：古六历「十九年七闰」；《授时历》（1281年）391年144闰，精度更高
-  // 岁余：Y₁ 非整数本地日 → 余分直接读 → bestRational → p/q 置闰日
-  //   出处：《四分历》（前104年）「岁余四分之一」→ 1/4 → 每4年置1闰日
-  //   Y₁ 已是本地日，不再需要除以 localDay；余分即 Y1 的小数部分
-  // ─────────────────────────────────────────────────────────────────
-  const daysPerYear = (!locked && !dayExceedsYear) ? Y1 : null;
-  const fracDay = daysPerYear !== null ? daysPerYear - Math.floor(daysPerYear) : null;
-  const leapDay = (fracDay !== null && fracDay > 0.002 && fracDay < 0.998)
-    ? { ...bestRational(fracDay), daysPerYear } : null;
-
-  return { Z, lo, hi, shichen, shichenValid, classified, modeA, modeB, intercalary, gregWorks, dayExceedsYear, leapDay };
 }
 
 // ── REPORT GENERATOR ──
@@ -428,7 +332,7 @@ function buildReport(state, r, t, lang) {
       `  ${t.rFreq} ${r.intercalary.interval.toFixed(2)} ${t.rLocalYr}`,
       ...(() => {
         const br = bestRational(r.intercalary.fraction);
-        const err = (Math.abs(br.p / br.q - r.intercalary.fraction) / r.intercalary.fraction * 100).toFixed(3);
+        const err = r.intercalary.fraction === 0 ? "0.000" : (Math.abs(br.p / br.q - r.intercalary.fraction) / r.intercalary.fraction * 100).toFixed(3);
         return [`  ${t.rZhang}: ${br.p}/${br.q}  (${zh ? "误差" : "error"}: ${err}%)`];
       })(),
       "",
@@ -450,159 +354,16 @@ function buildReport(state, r, t, lang) {
     `  ΦB: ${[...r.modeB.map(s => s.name), ...(state.overlays || []).map(o => o.name)].join(", ") || (zh ? "空集 ∅" : "∅ empty")}`,
     "",
     `  ${t.rCalType}: ${r.modeA.length > 0 ? (zh ? "阴阳合历" : "Lunisolar Calendar") : state.sats.length === 0 ? (zh ? "纯太阳历 (n=0)" : "Pure Solar (n=0)") : (zh ? `太阳历 + ${r.modeB.length}条乙型计数轨` : `Solar + ${r.modeB.length} Mode B tracks`)}`,
-    `  ${t.rGreg}: ${r.gregWorks ? (zh ? "可工作 ✓" : "Works ✓") : (zh ? "结构崩溃 ✗" : "Structural collapse ✗")}`,
+    `  ${r.gregWorks ? t.gregOk : t.gregFail}`,
     "",
     sep,
     `  ${t.rFooter}`,
+    `${zh ? "主历卫星" : "Calendar satellite"}: ${r.primary ? `${r.primary.index+1}. ${r.primary.name}` : "—"}`,
+    zh ? "月界为连续[start,end)；整数日仅舍入展示；累计中气截组不等于民用历年。太阳年窗口账见月表，跨界月单列。" : "Months use continuous [start,end); integer days are rounded display only. Event-count groups are not civil years. Solar-window ledgers and crossing fragments are shown in the month table.",
+    zh ? "本地修订预览：平均周期比不是置闰计数；多星配置不是多体解算；本报告不是认证民用历。" : "Local revision preview: mean cycle ratios are not intercalation counts; multi-star configuration is not a many-body solver; this is not a certified civil calendar.",
     sep,
   ];
   return lines.join("\n");
-}
-
-// ── CALENDAR ENGINE ──
-// Time within year [0, Y1) to reach k-th solar term out of N (k=0..N; k=N → Y1)
-// 相位约定：第0节气锚定于近日点（θ 从近日点起算）。这是演示约定——
-// 地球真实历以冬至为岁首，近日点在冬至后约13日；差一个整体相位，不影响结构结论。
-function keplerTermTime(k, N, ecc, Y1) {
-  const yr = Math.floor(k / N);
-  const kMod = k % N;
-  if (kMod === 0) return yr * Y1;
-  const theta = (2 * Math.PI / N) * kMod;
-  const factor = Math.sqrt((1 - ecc) / (1 + ecc));
-  let E = 2 * Math.atan(factor * Math.tan(theta / 2));
-  if (E < 0) E += 2 * Math.PI;
-  const M = E - ecc * Math.sin(E);
-  return yr * Y1 + (M / (2 * Math.PI)) * Y1;
-}
-
-function generateCalendar(state, r) {
-  const { Y1, ecc, N, localDay } = state;
-  // Y1 和 Tᵢ 已是本地日；无需 ldd 换算。localDay 仅用于换算注脚显示。
-  const Z = r.Z;
-  if (N < 2 || Y1 <= 0) return { type: "solar", terms: [], Y1, N, ecc, localDay };
-
-  if (r.modeA.length === 0) {
-    // 纯太阳历：N 节气，每段 Y1/N 本地日
-    const termLen = Y1 / N;
-    const terms = [];
-    let cum = 0;
-    for (let j = 1; j <= N; j++) {
-      const t1 = ecc < 0.005 ? (j - 1) * termLen : keplerTermTime(j - 1, N, ecc, Y1);
-      const t2 = ecc < 0.005 ? j * termLen : keplerTermTime(j, N, ecc, Y1);
-      const len = t2 - t1;
-      cum += len;
-      terms.push({ j, start: t1, length: len, cumulative: cum, dayStart: Math.round(t1) + 1 });
-    }
-    // 岁余年表：同朔余算法，Y₁ 非整数 → round(k·Y₁)−round((k−1)·Y₁) → 大/小年交替
-    // 出处：《四分历》岁余四分之一；地球=4年1闰，火星≈5年3闰，各星自推
-    // 闰日位置：远日点（最长节气末尾）——余分在此积累，还于此处，同无中气置闰逻辑
-    const aphTermIdx = terms.reduce((mi, t, i, a) => t.length > a[mi].length ? i : mi, 0);
-    const aphTermNum = terms[aphTermIdx].j; // 远日点节气编号（1-based）
-    const fracDay = Y1 - Math.floor(Y1);
-    let solarYears = null;
-    if (fracDay > 0.002 && fracDay < 0.998) {
-      const numYrs = Math.min(bestRational(fracDay, 100).q, 60);
-      const baseYear = Math.floor(Y1);
-      const yrs = [];
-      for (let k = 1; k <= numYrs; k++) {
-        const days = Math.round(k * Y1) - Math.round((k - 1) * Y1);
-        yrs.push({ y: k, days, isLeap: days > baseYear });
-      }
-      const leapCount = yrs.filter(y => y.isLeap).length;
-      const totalDays = yrs.reduce((s, y) => s + y.days, 0);
-      solarYears = { years: yrs, numYears: numYrs, leapCount, totalDays, aphTermNum };
-    }
-    return { type: "solar", terms, Y1, N, ecc, localDay, Z_local: Z, solarYears, aphTermNum };
-  }
-
-  const Ti = r.modeA[0].Ti;
-  if (Ti <= 0) return { type: "solar", terms: [], Y1, N, ecc };
-
-  // 章法周期：从 Y₁/Tᵢ 余分的最优有理逼近推出——地球得19，其他行星得各自的 q
-  // 同《授时历》「求章法」思路：章 = 置闰月数/章年 最简分数的分母
-  const frac0 = (Y1 / Ti) - Math.floor(Y1 / Ti);
-  const numYears = frac0 > 0.001 ? Math.min(bestRational(frac0, 100).q, 60) : 19;
-
-  // Zhongqi: N/2 per year, interval Z = 2Y₁/N
-  // Global j-th Zhongqi is at j*Z (mean), or Keplerian: yr*Y₁ + keplerTermTime(2*(j%halfN), N, ecc, Y₁)
-  const halfN = Math.round(N / 2);
-  const totalZQ = (numYears + 2) * halfN;
-  const zqTimes = [];
-  for (let j = 0; j <= totalZQ; j++) {
-    if (ecc < 0.005) {
-      zqTimes.push(j * Z);
-    } else {
-      const yr = Math.floor(j / halfN);
-      const k = j % halfN;
-      zqTimes.push(yr * Y1 + keplerTermTime(2 * k, N, ecc, Y1));
-    }
-  }
-
-  // Generate month sequence with pointer sweep (O(n+m))
-  const totalMonths = Math.ceil((numYears + 2) * Y1 / Ti) + 5;
-  const allMonths = [];
-  let zqCursor = 0;
-  for (let k = 1; k <= totalMonths; k++) {
-    const start = (k - 1) * Ti;
-    const end = k * Ti;
-    // 朔余离散化：Tᵢ 已是本地日，余分自然累积，大/小月整数交替——同《大衍历》朔余法
-    const length = Math.round(k * Ti) - Math.round((k - 1) * Ti);
-    while (zqCursor < zqTimes.length && zqTimes[zqCursor] < start) zqCursor++;
-    let zqCount = 0, tmp = zqCursor;
-    while (tmp < zqTimes.length && zqTimes[tmp] < end) { zqCount++; tmp++; }
-    allMonths.push({ k, start, length, zqCount, isIntercalary: zqCount === 0 });
-    if (start > (numYears + 1) * Y1) break;
-  }
-
-  // Group by counting N/2 Zhongqi per calendar year (correct lunisolar year boundary)
-  const years = [];
-  let yearMonths = [];
-  let zqInYear = 0;
-  for (const m of allMonths) {
-    yearMonths.push(m);
-    zqInYear += m.zqCount;
-    if (zqInYear >= halfN) {
-      let regNum = 0, prevReg = 0;
-      const labeled = yearMonths.map(mo => {
-        if (!mo.isIntercalary) { regNum++; prevReg = regNum; return { ...mo, num: regNum }; }
-        return { ...mo, leapAfter: prevReg };
-      });
-      const totalDays = labeled.reduce((s, mo) => s + mo.length, 0);
-      const leapMs = labeled.filter(mo => mo.isIntercalary);
-      years.push({ y: years.length + 1, months: labeled, totalDays, hasLeap: leapMs.length > 0, leapAfter: leapMs[0]?.leapAfter ?? null });
-      yearMonths = [];
-      zqInYear = 0;
-      if (years.length >= numYears) break;
-    }
-  }
-
-  // 第1年详图：月份整数起始日 + 节气整数起始日，供 Cp = ΦA ⊕ ΦB 图解
-  let year1detail = null;
-  if (years.length > 0) {
-    let d = 1;
-    const y1months = years[0].months.map(m => {
-      const mo = { ...m, dayStart: d };
-      d += m.length;
-      return mo;
-    });
-    const termStarts = Array.from({ length: N }, (_, idx) => {
-      const t = ecc < 0.005 ? idx * (Y1 / N) : keplerTermTime(idx, N, ecc, Y1);
-      return { j: idx + 1, day: Math.round(t) + 1 };
-    });
-    year1detail = { months: y1months, terms: termStarts, totalDays: years[0].totalDays };
-  }
-
-  const totalLeap = years.filter(y => y.hasLeap).length;
-  const totalDaysSum = years.reduce((s, y) => s + y.totalDays, 0); // 本地日
-  const expectedDays = Math.round(numYears * Y1); // 本地日，Y1已是本地日
-  const theoreticalLeap = Math.round(numYears * frac0);
-  const zhangQuality = theoreticalLeap > 0
-    ? (Math.abs(frac0 - theoreticalLeap / numYears) / (theoreticalLeap / numYears) * 100).toFixed(4)
-    : "N/A";
-
-  return { type: "lunisolar", years, totalLeap, theoreticalLeap, zhangQuality, numYears,
-           Ti, Ti_local: Ti, Z, Z_local: Z, Y1, Y1_local: Y1,
-           localDay, totalDaysSum, expectedDays, year1detail };
 }
 
 // ── YEAR VIEW COMPONENT ──
@@ -773,16 +534,18 @@ export default function CustomCalculator({ lang }) {
   const [showCal, setShowCal] = useState(false);
   const [showYearView, setShowYearView] = useState(false);
   const t = L[lang];
-  const r = compute(state);
-  const reportText = showReport ? buildReport(state, r, t, lang) : "";
-  const cal = generateCalendar(state, r);
+  const { r, cal, errors } = useMemo(() => evaluateModel(state), [state]);
+  const reportText = showReport && r ? buildReport(state, r, t, lang) : "";
 
   const set = useCallback((key, val) => setState(prev => ({ ...prev, [key]: val })), []);
 
   const loadPreset = (key) => setState({ ...PRESETS[key] });
 
   const addSat = () => set("sats", [...state.sats, { name: `Sat-${state.sats.length + 1}`, Ti: 15 }]);
-  const removeSat = (i) => set("sats", state.sats.filter((_, idx) => idx !== i));
+  const removeSat = (i) => setState(prev => ({...prev,
+    sats: prev.sats.filter((_,idx)=>idx!==i),
+    primarySatellite: prev.primarySatellite === i ? -1 : prev.primarySatellite > i ? prev.primarySatellite-1 : prev.primarySatellite,
+  }));
   const updateSat = (i, key, val) => set("sats", state.sats.map((s, idx) => idx === i ? { ...s, [key]: val } : s));
 
   const addStar = () => set("stars", [...state.stars, { name: `Star ${String.fromCharCode(65 + state.stars.length)}`, mass: 0.5 }]);
@@ -838,18 +601,17 @@ export default function CustomCalculator({ lang }) {
                   {state.stars.length > 1 && <button onClick={() => removeStar(i)} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 11, fontFamily: "var(--mono)" }}>{t.removeStar}</button>}
                 </div>
               ))}
-              <button onClick={addStar} style={{ background: "var(--cell)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 12px", color: "var(--orange)", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 11, marginTop: 4 }}>{t.addStar}</button>
+              <button disabled={state.stars.length >= LIMITS.maxItems} onClick={addStar} style={{ background: "var(--cell)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 12px", color: "var(--orange)", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 11, marginTop: 4 }}>{t.addStar}</button>
             </div>
 
             {/* Planet */}
             <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px" }}>
               <div style={{ fontSize: 12, color: "var(--accent)", fontFamily: "var(--mono)", letterSpacing: 1, marginBottom: 12, textTransform: "uppercase" }}>{t.planetConfig}</div>
               <InputRow label={t.stellarYear}><NumInput value={state.Y1} onChange={v => set("Y1", v)} min={0.1} /></InputRow>
-              <InputRow label={t.localDay}><NumInput value={state.localDay} onChange={v => set("localDay", v)} min={0.1} /></InputRow>
+              <InputRow label={t.localDay}><NumInput value={state.localDay} onChange={v => set("localDay", v)} min={0} /></InputRow>
               <InputRow label={t.ecc}><NumInput value={state.ecc} onChange={v => set("ecc", v)} min={0} max={0.99} step={0.01} /></InputRow>
-              {/* 偶数 N：节/气成对（中气=偶数位节气），奇数会破坏无中气置闰的机制。
-                  min/step 只拦微调箭头，手输值在 onChange 消毒（取偶、夹取 [4,360]） */}
-              <InputRow label={t.solarTerms}><NumInput value={state.N} onChange={v => set("N", Math.min(360, Math.max(4, 2 * Math.round(v / 2))))} min={4} max={360} step={2} /></InputRow>
+              {/* Raw N stays visible; validation rejects odd/out-of-range edits. */}
+              <InputRow label={t.solarTerms}><NumInput value={state.N} onChange={v => set("N", v)} min={4} max={360} step={2} /></InputRow>
               <div style={{ fontSize: 10, color: "var(--dim)", fontFamily: "var(--mono)", paddingLeft: 190, marginTop: -4, marginBottom: 8 }}>
                 {lang === "zh"
                   ? "N 是太阳侧约定；卫星受判于 N（月数/年 ∈ (N/2, N] ⇒ 甲型）"
@@ -868,13 +630,21 @@ export default function CustomCalculator({ lang }) {
                 </div>
               </InputRow>
               {state.stars.length >= 2 && (
-                <InputRow label={t.binaryPeriod}><NumInput value={state.binaryPeriod || 0} onChange={v => set("binaryPeriod", v)} min={0} /></InputRow>
+                <InputRow label={t.binaryPeriod}><NumInput value={state.binaryPeriod} onChange={v => set("binaryPeriod", v)} min={0} /></InputRow>
               )}
             </div>
 
             {/* Satellites */}
             <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px" }}>
               <div style={{ fontSize: 12, color: "var(--green)", fontFamily: "var(--mono)", letterSpacing: 1, marginBottom: 12, textTransform: "uppercase" }}>{t.satConfig}</div>
+              <label style={{display:"block",marginBottom:12,fontSize:12}}>
+                {lang === "zh" ? "主历卫星：" : "Calendar satellite: "}
+                <select value={state.primarySatellite ?? ""} onChange={e=>set("primarySatellite",e.target.value === "" ? null : Number(e.target.value))}>
+                  <option value="">{lang === "zh" ? "自动（仅限唯一甲型；多候选须选）" : "Auto (unique Mode A only; choose if multiple)"}</option>
+                  {state.primarySatellite === -1 && <option value={-1}>{lang === "zh" ? "原选择已删除，请重选" : "Selection deleted; choose again"}</option>}
+                  {state.sats.map((s,i)=><option key={i} value={i}>{i+1}. {s.name || "?"}</option>)}
+                </select>
+              </label>
               {state.sats.length === 0 && <div style={{ fontSize: 12, color: "var(--dim)", padding: "8px 0" }}>{t.noSats}</div>}
               {state.sats.map((s, i) => (
                 <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
@@ -885,7 +655,7 @@ export default function CustomCalculator({ lang }) {
                   <button onClick={() => removeSat(i)} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 11, fontFamily: "var(--mono)" }}>{t.removeSat}</button>
                 </div>
               ))}
-              <button onClick={addSat} style={{ background: "var(--cell)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 12px", color: "var(--green)", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 11, marginTop: 4 }}>{t.addSat}</button>
+              <button disabled={state.sats.length >= LIMITS.maxItems} onClick={addSat} style={{ background: "var(--cell)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 12px", color: "var(--green)", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 11, marginTop: 4 }}>{t.addSat}</button>
             </div>
 
             {/* Overlays */}
@@ -899,7 +669,7 @@ export default function CustomCalculator({ lang }) {
                   <button onClick={() => removeOverlay(i)} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 11, fontFamily: "var(--mono)" }}>{t.removeSat}</button>
                 </div>
               ))}
-              <button onClick={addOverlay} style={{ background: "var(--cell)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 12px", color: "#a78bfa", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 11, marginTop: 4 }}>{t.addOverlay}</button>
+              <button disabled={state.overlays.length >= LIMITS.maxItems} onClick={addOverlay} style={{ background: "var(--cell)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 12px", color: "#a78bfa", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 11, marginTop: 4 }}>{t.addOverlay}</button>
             </div>
 
             {/* Tip */}
@@ -907,6 +677,12 @@ export default function CustomCalculator({ lang }) {
           </div>
 
           {/* RIGHT: Results */}
+          {errors.length > 0 && <div role="alert" style={{ flex: 1, minWidth: 280, padding: 18, border: "1px solid #ef4444", borderRadius: 12 }}>
+            <strong>{lang === "zh" ? "请修正参数；计算与报告已暂停" : "Correct parameters; calculation and reporting paused"}</strong>
+            <ul>{errors.map(e => <li key={e.field}>{e.field}: {lang === "zh" ? e.zh : e.en}</li>)}</ul>
+            <div>{lang === "zh" ? "这些是本地演示的数值与资源边界，不是天体存在与否的判据。" : "These are numerical and resource limits of the local demo, not physical existence criteria."}</div>
+          </div>}
+          {r && <>
           <div style={{ flex: 1, minWidth: 320, display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Derived */}
             <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px" }}>
@@ -1035,8 +811,16 @@ export default function CustomCalculator({ lang }) {
               </div>
             </div>
           </div>
+          </>}
         </div>
 
+        {r && <>
+        <aside style={{ marginTop: 16, padding: 14, border: "1px solid #d4a84366", borderRadius: 8, lineHeight: 1.7 }}>
+          {lang === "zh"
+            ? "当前实验约定：月界按连续时刻 [start,end) 计中气；整数日仅用四舍五入展示，尚未按整日重新归属事件。累计至少 N/2 个中气后截组，不称认证历年。多个甲型卫星须明确选主历；初朔和近日点锚在 t=0。"
+            : "Experimental conventions: events use continuous [start,end) month boundaries. Rounded integer days are display-only, without event reassignment. Groups close after at least N/2 events, not certified civil year boundaries. Multiple Mode A satellites require explicit selection; mean new moon and perihelion start at t=0."}
+          <div>{lang === "zh" ? "当前主历卫星：" : "Current calendar satellite: "}{r.primary?.name ?? "—"}</div>
+        </aside>
         {/* Generate Report */}
         <div style={{ marginTop: 20, textAlign: "center" }}>
           <button onClick={() => { setShowReport(v => !v); setCopied(false); }} style={{
@@ -1117,7 +901,7 @@ export default function CustomCalculator({ lang }) {
               <div>
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ fontSize: 12, color: "var(--green)", fontFamily: "var(--mono)", letterSpacing: 1, textTransform: "uppercase" }}>
-                    {lang === "zh" ? `华夏历法 · ${cal.numYears}年章法` : `Huaxia Calendar · ${cal.numYears}-Year Zhang Cycle`}
+                    {lang === "zh" ? `华夏历 · ${cal.numYears}组实验月表（非已证章法）` : `Huaxia Li · ${cal.numYears} experimental groups (not a certified cycle)`}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", marginTop: 4 }}>
                     {t.calTiZ((cal.Ti_local ?? cal.Ti).toFixed(3), (cal.Z_local ?? cal.Z).toFixed(3))}
@@ -1143,7 +927,7 @@ export default function CustomCalculator({ lang }) {
                           <td style={{ padding: "4px 12px", color: "var(--dim2)" }}>{y.y}</td>
                           <td style={{ padding: "4px 12px", fontWeight: y.hasLeap ? 600 : 400, color: y.hasLeap ? "var(--green)" : "var(--fg)" }}>{y.months.length}</td>
                           <td style={{ padding: "4px 12px", color: y.hasLeap ? "var(--green)" : "var(--dim)", fontWeight: y.hasLeap ? 600 : 400 }}>
-                            {y.hasLeap ? t.calLeapMark(y.leapAfter) : t.calNoLeap}
+                            {y.hasLeap ? y.months.filter(m => m.isIntercalary).map(m => t.calLeapMark(m.leapAfter)).join(" / ") : t.calNoLeap}
                           </td>
                           <td style={{ padding: "4px 12px" }}>{y.totalDays}</td>
                         </tr>
@@ -1152,14 +936,40 @@ export default function CustomCalculator({ lang }) {
                   </table>
                 </div>
                 <div style={{ marginTop: 14, padding: "10px 14px", background: "var(--cell)", borderRadius: 8, fontFamily: "var(--mono)", fontSize: 12, lineHeight: 1.9 }}>
-                  <div style={{ color: "var(--dim2)" }}>{t.calZhangSummary(cal.numYears, cal.theoreticalLeap, cal.totalDaysSum)}</div>
-                  {cal.totalLeap !== cal.theoreticalLeap && (
-                    <div style={{ color: "var(--orange)", fontSize: 11 }}>{t.calZhangSimulated(cal.totalLeap)}</div>
-                  )}
-                  <div style={{ color: parseFloat(cal.zhangQuality) < 0.01 ? "var(--green)" : "var(--dim2)" }}>
-                    {t.calZhangError(cal.zhangQuality)}
-                  </div>
+                  <div>{lang === "zh" ? `完整月 ${cal.eventStats.months}；中气 ${cal.eventStats.events}；无中气月 ${cal.totalLeap}；含空月的组数 ${cal.leapYears}` : `Complete months ${cal.eventStats.months}; events ${cal.eventStats.events}; empty months ${cal.totalLeap}; groups with empty months ${cal.leapYears}`}</div>
+                  <div>L₀ = M − Q + E = {cal.eventStats.months} − {cal.eventStats.events} + {cal.eventStats.extraEvents} = {cal.totalLeap}</div>
+                  <div>{lang === "zh" ? "仅统计所列完整月。E 为每月超过一个的中气数之和；空月标签不等于已认证的民用闰月。" : "Counts cover the displayed complete months only. E counts extra events beyond one per month. Empty-month labels are not certified civil intercalation."}</div>
                 </div>
+                <details style={{marginTop:16,lineHeight:1.7}}>
+                  <summary>{lang === "zh" ? "日界对照（不覆盖原月表）" : "Day-boundary comparison (original table unchanged)"}</summary>
+                  <p>{lang === "zh" ? "用相同月序及中气事件表对照：连续月界 [朔时,下朔时)，与整日月界 [floor(朔时),floor(下朔时))。整数表示相对日零点，不是时区或真实民用日期。这里用向下取整，不是上方整数显示的四舍五入。" : "Same month indices and event list: [new-moon time,next time) versus [floor(time),floor(next time)). Integers mark relative-day midnight, not a timezone or real civil date. This uses floor, not the rounded display above."}</p>
+                  {(() => { const d=cal.dayBoundaryComparison; return <>
+                    <div>{lang === "zh" ? "归属变化的月 / 空月标签变化：" : "Months with changed ownership / empty-label changes: "}{d.changedMonths} / {d.changedEmptyLabels}</div>
+                    <div>{lang === "zh" ? "连续范围" : "Instant scope"}: [{d.scope.instantStart}, {d.scope.instantEnd}) · L₀={d.instant.months}−{d.instant.events}+{d.instant.extraEvents}={d.instant.emptyMonths}</div>
+                    <div>{lang === "zh" ? "整日范围" : "Whole-day scope"}: [{d.scope.dayStart}, {d.scope.dayEnd}) · L₀={d.wholeDay.months}−{d.wholeDay.events}+{d.wholeDay.extraEvents}={d.wholeDay.emptyMonths}</div>
+                    <div>{lang === "zh" ? "外边界新增 / 移出事件数：" : "Events gained / lost at outer boundaries: "}{d.outerGained.length} / {d.outerLost.length}</div>
+                    <button onClick={()=>{
+                      const blob=new Blob([JSON.stringify({parameters:state,primary:cal.primary,comparison:d},null,2)],{type:"application/json"});
+                      const url=URL.createObjectURL(blob);const link=document.createElement("a");
+                      link.href=url;link.download="huaxia-day-boundary-comparison.json";link.click();
+                      setTimeout(()=>URL.revokeObjectURL(url),1000);
+                    }}>{lang === "zh" ? "下载全部日界对照 JSON" : "Download full comparison JSON"}</button>
+                    <p>{lang === "zh" ? "以下最多显示80个变化月；完整数据见下载。新增／移出是相对该月，内部换月可能记在两行，不能当成两个不同事件。" : "Up to 80 changed months below; download for all rows. Gains/losses are per month: an internal move may appear twice, not as two distinct events."}</p>
+                    {d.rows.filter(row=>row.changed).slice(0,80).map(row=><div key={row.monthIndex} style={{marginBottom:8}}>
+                      M{row.monthIndex}: [{row.start.toFixed(6)}, {row.end.toFixed(6)}) → [{row.dayStart}, {row.dayEnd}) · Q: {row.instantCount} → {row.dayCount}<br/>
+                      + {row.gained.join(", ") || "—"} / − {row.lost.join(", ") || "—"}
+                    </div>)}
+                  </>; })()}
+                </details>
+                <details style={{marginTop:16,lineHeight:1.7}}>
+                  <summary>{lang === "zh" ? "太阳年窗口账（与上方实验分组分开）" : "Solar-year window ledger (separate from experimental groups)"}</summary>
+                  <p>{lang === "zh" ? "窗口按 [iY,(i+1)Y) 划分。下列恒等式只用完整落入窗口的月；跨界月片段单列，不当成完整月或闰月。窗口中气总数与完整月中气数不是同一口径。" : "Windows use [iY,(i+1)Y). The identity uses only wholly contained months; crossing fragments are listed separately, not counted as complete or leap months. Window events and complete-month events have different scopes."}</p>
+                  {cal.solarWindows.map(w=><details key={w.window} style={{marginBottom:8}}>
+                    <summary>{w.window}: [{w.start.toFixed(4)}, {w.end.toFixed(4)}) · {lang === "zh" ? "窗口中气" : "window events"} {w.eventsInWindow} · L₀ = {w.stats.months} − {w.stats.events} + {w.stats.extraEvents} = {w.stats.emptyMonths} · {lang === "zh" ? "跨界片段" : "fragments"} {w.fragments.length}</summary>
+                    <div>{lang === "zh" ? "完整月序号：" : "Complete month indices: "}{w.complete.join(", ")}</div>
+                    {w.fragments.map(f=><div key={f.k}>M{f.k}: [{f.monthStart.toFixed(4)}, {f.monthEnd.toFixed(4)}) → [{f.overlapStart.toFixed(4)}, {f.overlapEnd.toFixed(4)})</div>)}
+                  </details>)}
+                </details>
               </div>
             ) : (
               <div>
@@ -1204,8 +1014,8 @@ export default function CustomCalculator({ lang }) {
                 {state.ecc > 0.01 && (
                   <div style={{ marginTop: 12, fontSize: 11, color: "var(--dim)", fontFamily: "var(--mono)", lineHeight: 1.6 }}>
                     {lang === "zh"
-                      ? `蓝 < 均值 ${r.lo.toFixed(2)} 本地日（近日点快速）· 黄 > 均值（远日点慢速）· 相位约定：第1节气锚定近日点（地球真实历以冬至为岁首）`
-                      : `Blue < mean ${r.lo.toFixed(2)} local d (fast, perihelion) · Yellow > mean (slow, aphelion) · Phase convention: term 1 anchored at perihelion (Earth's real calendar anchors at winter solstice)`}
+                      ? `蓝 < 均值 ${r.lo.toFixed(2)} 本地日（近日点快速）· 黄 > 均值（远日点慢速）· 演示相位：第1节气锚定近日点；不代表历史年首规则`
+                      : `Blue < mean ${r.lo.toFixed(2)} local d (fast, perihelion) · Yellow > mean (slow, aphelion) · Demo phase: term 1 at perihelion; not a historical year-start rule`}
                   </div>
                 )}
 
@@ -1246,6 +1056,7 @@ export default function CustomCalculator({ lang }) {
             )}
           </div>
         )}
+        </>}
 
       </div>
     </div>
