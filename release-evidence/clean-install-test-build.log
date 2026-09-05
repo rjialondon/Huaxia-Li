@@ -1,0 +1,239 @@
+
+added 66 packages in 1s
+
+> huaxia-li-universal-formula@1.1.0 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: prograde approximation has an explicit finite positive domain
+ok 1 - prograde approximation has an explicit finite positive domain
+  ---
+  duration_ms: 0.686709
+  ...
+# Subtest: all displayed candidate cards have bilingual scoped provenance
+ok 2 - all displayed candidate cards have bilingual scoped provenance
+  ---
+  duration_ms: 0.467375
+  ...
+# Subtest: sub-diurnal candidate is not Mode A even if it meets the mean inequality
+ok 3 - sub-diurnal candidate is not Mode A even if it meets the mean inequality
+  ---
+  duration_ms: 0.102375
+  ...
+# Subtest: Mode A upper bound is excluded for point and interval
+ok 4 - Mode A upper bound is excluded for point and interval
+  ---
+  duration_ms: 0.424917
+  ...
+# Subtest: removed overclaims stay absent from revised tool pages
+ok 5 - removed overclaims stay absent from revised tool pages
+  ---
+  duration_ms: 2.134708
+  ...
+# Subtest: event earlier on the new-moon day moves to the following month
+ok 6 - event earlier on the new-moon day moves to the following month
+  ---
+  duration_ms: 1.556291
+  ...
+# Subtest: same moment and exact midnight have unambiguous half-open ownership
+ok 7 - same moment and exact midnight have unambiguous half-open ownership
+  ---
+  duration_ms: 0.126333
+  ...
+# Subtest: outer boundary changes explain unequal event totals
+ok 8 - outer boundary changes explain unequal event totals
+  ---
+  duration_ms: 0.083834
+  ...
+# Subtest: binary searches agree with brute-force enumeration across fractional phases
+ok 9 - binary searches agree with brute-force enumeration across fractional phases
+  ---
+  duration_ms: 68.553625
+  ...
+# Subtest: production comparison preserves the existing instantaneous ledger
+ok 10 - production comparison preserves the existing instantaneous ledger
+  ---
+  duration_ms: 5.969875
+  ...
+# Subtest: malformed event sequences and month boundaries are rejected
+ok 11 - malformed event sequences and month boundaries are rejected
+  ---
+  duration_ms: 0.557709
+  ...
+# Subtest: Earth demo separates net count from multiple-event compensation under either boundary
+ok 12 - Earth demo separates net count from multiple-event compensation under either boundary
+  ---
+  duration_ms: 1.853834
+  ...
+# Subtest: all actual UI presets are valid and finite, without mutation
+ok 13 - all actual UI presets are valid and finite, without mutation
+  ---
+  duration_ms: 13.611083
+  ...
+# Subtest: empty, nonfinite and out-of-range fields stop both outputs
+ok 14 - empty, nonfinite and out-of-range fields stop both outputs
+  ---
+  duration_ms: 1.304625
+  ...
+# Subtest: invalid item values, blank names and collection sizes are rejected
+ok 15 - invalid item values, blank names and collection sizes are rejected
+  ---
+  duration_ms: 0.312708
+  ...
+# Subtest: zero optional periods and empty satellite/overlay lists remain valid
+ok 16 - zero optional periods and empty satellite/overlay lists remain valid
+  ---
+  duration_ms: 0.073625
+  ...
+# Subtest: maximum supported resolution remains within the month budget
+ok 17 - maximum supported resolution remains within the month budget
+  ---
+  duration_ms: 30.63075
+  ...
+# Subtest: half-open month boundaries assign coincident events exactly once
+ok 18 - half-open month boundaries assign coincident events exactly once
+  ---
+  duration_ms: 0.968875
+  ...
+# Subtest: rounded day display does not decide event ownership
+ok 19 - rounded day display does not decide event ownership
+  ---
+  duration_ms: 1.261584
+  ...
+# Subtest: calendar cannot use a stale caller-supplied classification
+ok 20 - calendar cannot use a stale caller-supplied classification
+  ---
+  duration_ms: 3.786583
+  ...
+# Subtest: public Kepler entry validates arguments and preserves ordered endpoints
+ok 21 - public Kepler entry validates arguments and preserves ordered endpoints
+  ---
+  duration_ms: 0.766708
+  ...
+# Subtest: zero is exactly 0/1, not a small positive leap rate
+ok 22 - zero is exactly 0/1, not a small positive leap rate
+  ---
+  duration_ms: 1.402875
+  ...
+# Subtest: bounded rational search validates its inputs
+ok 23 - bounded rational search validates its inputs
+  ---
+  duration_ms: 0.79
+  ...
+# Subtest: integer month/year ratio can still have four empty months
+ok 24 - integer month/year ratio can still have four empty months
+  ---
+  duration_ms: 0.419333
+  ...
+# Subtest: empty months are not net count when a month has multiple events
+ok 25 - empty months are not net count when a month has multiple events
+  ---
+  duration_ms: 0.189917
+  ...
+# Subtest: count identity for all 4^6 short event sequences
+ok 26 - count identity for all 4^6 short event sequences
+  ---
+  duration_ms: 9.351291
+  ...
+# Subtest: continuous floor difference is not discrete difference
+ok 27 - continuous floor difference is not discrete difference
+  ---
+  duration_ms: 0.44675
+  ...
+# Subtest: actual calendar counts every empty month, including several per group
+ok 28 - actual calendar counts every empty month, including several per group
+  ---
+  duration_ms: 20.641334
+  ...
+# Subtest: server-render Cross zh
+ok 29 - server-render Cross zh
+  ---
+  duration_ms: 8.679959
+  ...
+# Subtest: server-render Cross en
+ok 30 - server-render Cross en
+  ---
+  duration_ms: 1.971583
+  ...
+# Subtest: server-render Hunter zh
+ok 31 - server-render Hunter zh
+  ---
+  duration_ms: 3.279292
+  ...
+# Subtest: server-render Hunter en
+ok 32 - server-render Hunter en
+  ---
+  duration_ms: 2.045833
+  ...
+# Subtest: server-render Calculator zh
+ok 33 - server-render Calculator zh
+  ---
+  duration_ms: 6.674625
+  ...
+# Subtest: server-render Calculator en
+ok 34 - server-render Calculator en
+  ---
+  duration_ms: 1.998917
+  ...
+# Subtest: server-render Numerics zh
+ok 35 - server-render Numerics zh
+  ---
+  duration_ms: 0.770041
+  ...
+# Subtest: server-render Numerics en
+ok 36 - server-render Numerics en
+  ---
+  duration_ms: 0.437416
+  ...
+# Subtest: homepage and no-JS metadata agree on experimental scope
+ok 37 - homepage and no-JS metadata agree on experimental scope
+  ---
+  duration_ms: 1.739625
+  ...
+# Subtest: ambiguous satellites stop output until explicitly selected
+ok 38 - ambiguous satellites stop output until explicitly selected
+  ---
+  duration_ms: 12.977667
+  ...
+# Subtest: stale or ineligible explicit selections never fall back
+ok 39 - stale or ineligible explicit selections never fall back
+  ---
+  duration_ms: 0.436625
+  ...
+# Subtest: solar window and experimental group use visibly different endpoints
+ok 40 - solar window and experimental group use visibly different endpoints
+  ---
+  duration_ms: 1.147
+  ...
+# Subtest: crossing months are fragments, never complete months
+ok 41 - crossing months are fragments, never complete months
+  ---
+  duration_ms: 0.251792
+  ...
+# Subtest: Earth and high-eccentricity windows conserve coverage and complete-month identity
+ok 42 - Earth and high-eccentricity windows conserve coverage and complete-month identity
+  ---
+  duration_ms: 7.592708
+  ...
+1..42
+# tests 42
+# suites 0
+# pass 42
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 156.447083
+
+> huaxia-li-universal-formula@1.1.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 41 modules transformed.
+rendering chunks...
+computing gzip size...
+docs/index.html                   4.52 kB │ gzip:  2.13 kB
+docs/assets/index-CnTapGD3.css    4.78 kB │ gzip:  1.57 kB
+docs/assets/index-Bb9-hlMW.js   278.62 kB │ gzip: 89.60 kB
+✓ built in 521ms

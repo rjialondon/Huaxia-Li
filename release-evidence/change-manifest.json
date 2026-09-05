@@ -1,0 +1,228 @@
+{
+  "baselineCommit": "18b9e9bee84884891d06baf73747a16eccea0ece",
+  "scope": "File comparison only; excludes dependency trees, git metadata and release-evidence; does not certify merge or release",
+  "changes": [
+    {
+      "path": ".github/workflows/verify.yml",
+      "kind": "modified",
+      "before": "717bd9e2e4b5fde32c642fe1af03757541a2d6f8d11c61dc44af54ede3668d91",
+      "after": "7755f62fe3d64644a6bc81167e7584d88400f333179908d55e319d9ce8a79587"
+    },
+    {
+      "path": ".gitignore",
+      "kind": "modified",
+      "before": "f8d87e9ddad3c196fb1afde8e5f1451c2c7a5f6336142d8dd1be601724398b98",
+      "after": "6fac1000895cd8e6442b8a8b391967526da4d718bda56ebb0457b3e7f32eb1c0"
+    },
+    {
+      "path": "README.md",
+      "kind": "modified",
+      "before": "9cd69dbb4b1f87f504ca11952a8b0ba9522af60d742314981e733f6c5ed6f09f",
+      "after": "59f062b369cac99b989624ca23a1f5d0158a590a887ce2020abd0711b55fcea3"
+    },
+    {
+      "path": "RELEASE-CHECKLIST.md",
+      "kind": "added",
+      "before": null,
+      "after": "16eefde7798cb3c7e5d97e7f123e082fe8807512e9993d231399f19250cdfd1c"
+    },
+    {
+      "path": "REVISION-02.md",
+      "kind": "added",
+      "before": null,
+      "after": "13c57c1bc68d68c7dee2617ea26c7b9a4bd7c2681df636cbad5e71f332fbecf3"
+    },
+    {
+      "path": "REVISION-03.md",
+      "kind": "added",
+      "before": null,
+      "after": "89fb5b681ad509819e5f15c86e9390711bdd4c269ddae51f5bb360e1d27ae598"
+    },
+    {
+      "path": "REVISION-04.md",
+      "kind": "added",
+      "before": null,
+      "after": "f2cbd3cfb2f391b905ebee170d93134c73d310aef410427227db20b2bfc85200"
+    },
+    {
+      "path": "REVISION-05.md",
+      "kind": "added",
+      "before": null,
+      "after": "623330d23486f0c3399e8cacd290693ed4f2e1b06c32738fbf1ecb73fdecb48d"
+    },
+    {
+      "path": "REVISION-06.md",
+      "kind": "added",
+      "before": null,
+      "after": "72ad93bf84488d8b080d9776ac6cd943f20a9160ae60154e7a69c387610bf787"
+    },
+    {
+      "path": "REVISION.md",
+      "kind": "added",
+      "before": null,
+      "after": "44711a291c0b5f7336e279bec4278c69afefed94f43944e78bf1012dade91778"
+    },
+    {
+      "path": "docs/assets/index-Bb9-hlMW.js",
+      "kind": "added",
+      "before": null,
+      "after": "7c636b366054d95e85825fe08748b08375af096674a5033de13cbc8310e57406"
+    },
+    {
+      "path": "docs/assets/index-DIiIT7ux.js",
+      "kind": "removed",
+      "before": "93d2dd3461910104cdb84eed3cf1ccc31aa4df45ab906d6b217b7c7788d01d3a",
+      "after": null
+    },
+    {
+      "path": "docs/index.html",
+      "kind": "modified",
+      "before": "e71d473913eda685b3e1ae5bc694df8dbc7b93928d42124415a539c6fc439b4b",
+      "after": "a0588065cac8c3f8425843a9d9cd6ef12d316db0e181129d9743e1873aa005a3"
+    },
+    {
+      "path": "index.html",
+      "kind": "modified",
+      "before": "e85db47941df86fae8abefccb8cdc44537566a2d54357dccd68ad0edf9ece0f4",
+      "after": "6a2aed1eba7d590a20f599e3f56a116af210dbb37e4b27391ba83b3796da05fc"
+    },
+    {
+      "path": "package-lock.json",
+      "kind": "modified",
+      "before": "438eb53e25885900fbf02a9c6fa249e6a0b0ac1f3e9b9b003b519b510e5cffa6",
+      "after": "30779a85cb0836e69468a486183969486028e966a97653f51526170863a94cf5"
+    },
+    {
+      "path": "package.json",
+      "kind": "modified",
+      "before": "f407bd5c4c9363c6c363068ecb8e9e2f9d60a9da0e700c275ca6f7f4665b930c",
+      "after": "365523cdb0163fed5ccb96649cd90d359deadd28007de4887da571c69c6d94d3"
+    },
+    {
+      "path": "scripts/change-manifest.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "22a00931b2a3c0673d9851788a34e1d1b5a13135098f7201646bd79906e79b61"
+    },
+    {
+      "path": "src/App.jsx",
+      "kind": "modified",
+      "before": "decb089ca01e98083fd79d3cd8c6cc3b9d3355fd8596c338485bb93e6fd15075",
+      "after": "9d49ce782d61decc462c757ed928f894c0152822783165006bda8a114bd6ae67"
+    },
+    {
+      "path": "src/CrossVerification.jsx",
+      "kind": "modified",
+      "before": "4669ae17a80c226f50b723a134ce7fca3af8d37c62b5d9c7a1e9d38ce969bfbf",
+      "after": "57c20a626838457424a380214e956b107b8484b6e11866c5213131747bd6bfec"
+    },
+    {
+      "path": "src/CustomCalculator.jsx",
+      "kind": "modified",
+      "before": "f410eec2666d5becffd800f7e7afe51cd55e9f68b3e12b35aa676da6da0326ee",
+      "after": "e001464ec9cb055d50d7e3f1573faf2d3580651a81eeba9ceac2f2eef5c8e0e5"
+    },
+    {
+      "path": "src/ExomoonHunter.jsx",
+      "kind": "modified",
+      "before": "80fdf6b78a686648d593c3cbee6519c41a3502af3d7b837af405e2258d79952e",
+      "after": "abed5b2ed4a73093318184fea602a63451c87bcfc8a951c5d6ba92ab370b1730"
+    },
+    {
+      "path": "src/core/候选来源.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "7c37fa4463642cc32006e22075bd923a8f91b7a7b6b0515df0c5c9d39e10d782"
+    },
+    {
+      "path": "src/core/候选演算.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "017a3240617c9608fdddccfa0c73f44bbef756f664f6115306d015b1bdd13251"
+    },
+    {
+      "path": "src/core/历表.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "6b395c055fb05eedf9f0ab6f0ee393f7d8127faf90ef466c3431083f65c6c56e"
+    },
+    {
+      "path": "src/core/参数校验.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "83f04c0972c06ed7054c528757b64d4a32c3bdd70e56bdbcedacf68f5f901d6d"
+    },
+    {
+      "path": "src/core/数学.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "e646e0be82e4b43a29115184dce475852b4e9e9e207421d4e36b1a61cc5c6a7d"
+    },
+    {
+      "path": "src/core/日界对照.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "069c73dba67716e4111954e4f120a91695f4807d92eaa499403643acbc029615"
+    },
+    {
+      "path": "src/core/模型.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "5c2720262a80bc5de4be1f25e30d3fab37fc618199b80315f557080242822e18"
+    },
+    {
+      "path": "src/core/窗口.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "106f30462876dd0e37e6ff3c83a07a35e5ed39499661a3cedfc5308de5c1bdb7"
+    },
+    {
+      "path": "src/core/预设.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "f1d64f42bd3c4ddbaabefaa8e02631530bfd853159882340d280163654874de7"
+    },
+    {
+      "path": "src/formula.js",
+      "kind": "modified",
+      "before": "9a9b00b5a669acf10a0d5e203d36e23fc98de3d8627e79a38c531078367d3ca6",
+      "after": "d8f073b3b9d1e36d863e0fc50e80134dcee2700225766623ea5a22bc57b1ebd8"
+    },
+    {
+      "path": "tests/candidates.test.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "58bb7ab09f7191e30ebcf41b0ead9ca302788103dfa8708856f2c95134d1ae55"
+    },
+    {
+      "path": "tests/day-boundaries.test.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "f6bc0e9bac06dda41c83f7072955e5a4cf4101b91ef1df69a0b8c768d68e1910"
+    },
+    {
+      "path": "tests/parameters.test.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "24f337a39dabb8cf8f154c65f98c910534ee4cc90a70e84099d6a52787552a44"
+    },
+    {
+      "path": "tests/regression.test.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "2e43045a58fc9733415061da84c0fb783065255aa73a15785b3b3431c033d8e4"
+    },
+    {
+      "path": "tests/render.test.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "cc958d54b134b2367edeb5eeeea8ad186d06acdc5e91b5ecb5f63d0290f74d14"
+    },
+    {
+      "path": "tests/windows.test.mjs",
+      "kind": "added",
+      "before": null,
+      "after": "4b50053be9a15cdada80d905c3fd44832f5dc8ce35825b06ed69dfc0a390d742"
+    }
+  ]
+}

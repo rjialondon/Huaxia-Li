@@ -1,102 +1,48 @@
-# 华夏历 · Universal Planetary Formula
-# Huaxia Calendar — Interactive Verification Tools
+# 华夏历 · Huaxia Li
 
-[![verify](https://github.com/rjialondon/Huaxia-Li/actions/workflows/verify.yml/badge.svg)](https://github.com/rjialondon/Huaxia-Li/actions/workflows/verify.yml)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21133058.svg)](https://doi.org/10.5281/zenodo.21133058)
+参数化历法实验框架 / An experimental parametric calendar framework
 
-**Live Demo:** https://rjialondon.github.io/Huaxia-Li/
+> 本地修订预览，尚未发布。基于提交 `18b9e9bee84884891d06baf73747a16eccea0ece`。旧论文保持不变；纠错与未决问题见 [REVISION.md](REVISION.md)。这不是已获天文或历史认证的民用历。
 
-## What is this?
+## 项目主张
 
-A set of interactive tools that verify a mathematical formula extracted from the ancient Chinese calendar (华夏历, Huaxia Calendar). The formula handles timekeeping for **any** planetary system — single star, binary star, with or without moons, tidally locked or free-rotating — using one unified structure.
+华夏历以日月合参、节候与并行周期组织时间，探索跨行星的参数化历法结构。华夏历是项目本名；历史来路、数学命题、计算实现和天文适用性分别举证。
 
-The Gregorian calendar is a hardcoded implementation for Earth. This formula is the parametric generalization.
+本库提供跨系统参数演示、卫星候选体分类、自定义验算和数值实验。平均周期分型是当前设计约定，不是一般置闰定理；有输出不证明任意行星系统都适用。多星配置目前不代表完成多体动力学求解。年长接近365.2425本地日的判据，也不判断公历是否能执行。
 
-$$C_p = \Phi_A\bigl(\Theta_1,\ \{\Psi_i \in \text{Mode A}\}\bigr)\ \oplus\ \Phi_B\bigl(\Theta_1,\ldots,\Theta_m,\ \{\Psi_i \in \text{Mode B}\}\bigr)$$
+## 已落实的纠错
 
-## Three Tools
+自定义月表以同一批完整月记录统计：
 
-### 1. Cross-System Verification (跨星系交叉验证)
-10 real astronomical systems tested with NASA/ESO data:
-- Solar System: Earth, Mars, Jupiter, Venus
-- Exoplanets: TRAPPIST-1 e/f, Proxima Centauri b, Kepler-16b, TOI-5624 e, b Centauri b, Gliese 536 c
+`L₀ = M − Q + E`，其中 M 为月数，Q 为中气事件数，E 为各月超过一个中气的事件数之和，L₀ 为无中气月数。
 
-**Result:** All 10 systems produce defined output. Gregorian works for 1.
+只有每月最多一个中气时，才可简化为 `L₀=M−Q`。年平均周期比的小数部分不是一般情况下的空月数；有空月的年数也不是空月总数。旧月表的年界、日界和命月策略尚未认证，当前空月标签仅用于实验。
 
-### 2. Mode A Exomoon Hunter (甲型系外卫星猎手)
-Searches known exomoon candidates for intercalary eligibility (Mode A condition: Y₁/N ≤ Tᵢ < 2Y₁/N).
+## 验证与参与
 
-**Finding:** Kepler-1625 b I (Tᵢ ≈ 19 d sidereal = **20.35 d synodic**, Tᵢ/Z = **85%**) falls within Mode A range [12.0, 24.0) days — potentially the second Mode A instance beyond Earth's Moon. This would correspond to a **14-month/year Huaxia Calendar with intercalation every ~8 local years**.
-
-> Note: the exomoon candidate itself remains observationally disputed (Teachey & Kipping 2018; not recovered by Kreidberg et al. 2019; Heller et al. 2023 argue a possible false positive). The formula supplies the classification criterion in advance; the data will decide.
-
-### 3. Custom Calculator (自定义验算器)
-Input any planetary parameters. Add/remove stars, satellites, overlay cycles. Formula outputs in real time.
-
-## Conventions (回归年 vs 恒星年)
-
-A season-anchored calendar is, strictly, built on the **tropical year** (回归年) — solar terms are defined by ecliptic longitude, which precession (岁差, discovered by Yu Xi 虞喜 in the 4th century and quantified by He Chengtian 何承天) decouples from the sidereal year. Numbers in this repo use three Earth-year conventions interchangeably where the difference is immaterial:
-
-- **365.25 d** (Julian) — paper baseline and app presets (0.003% from tropical);
-- **365.2422 d** (tropical) — Metonic / intercalary-rate arithmetic (`aphelion_sim.py`, Appendix A.3);
-- **365.256 d** (sidereal, JPL) — cross-checks in `verify_tables.py`.
-
-None of the Mode A/B classifications or intercalary conclusions change under any of the three. For exoplanets, the osculating orbital period stands in for Y₁: axial precession there is unmeasured, and the difference is far below current observational uncertainty.
-
-## Verification
-
-Three standalone Python scripts independently recompute the paper's tables and simulations, and cross-check the solar model against a real ephemeris — see [`verification/`](verification/) for details and known errata. All three run in CI on every push.
-
-```bash
-python3 verification/verify_tables.py     # Appendix A tables from JPL parameters (stdlib only)
-python3 verification/aphelion_sim.py      # 400-yr Kepler simulation of aphelion clustering (stdlib only)
-pip install skyfield && \
-python3 verification/ephemeris_check.py   # solar-term timing vs JPL DE421: max Δ ≈ 14 min over 2 yr
+```sh
+npm ci
+npm test
+npm run build
 ```
 
-## Related Work — where this sits in the timekeeping stack
+测试包含整数周期、多中气补偿、4096种短事件序列、取整反例和有理逼近边界。构建输出在 `docs/`；请勿把此部分修订直接部署。旧Python研究脚本位于 [verification/](verification/)，运行成功不自动证明全部论文主张。
 
-Planetary timekeeping has three layers. This work addresses the third, which is currently the least standardized:
+欢迎历算、天文和版本校勘研究者参与：请给出规则、版本与页码、时间尺度及事件定义、可复现输入和期望结果。尚需完成真朔与日界验证、历史颁历复原、多体适用条件、数据来源复核及浏览器验收。模型算得通、与某史例相容和历史上确曾采用，是三种不同结论。
 
-1. **Time scales** (seconds; relativistic clock rates) — UTC/TAI/TT/TDB on Earth; Mars solar time as defined by **Allison & McEwen (2000)**, *Planet. Space Sci.* 48, 215 (the basis of NASA GISS **Mars24** and of LMST/LTST used in Mars surface operations); **Coordinated Lunar Time (LTC)**, directed by the US OSTP in 2024 for cislunar operations. These define *what time it is*.
-2. **Day counts** — sols, Mission Sol numbers, MJD. These define *how many days have passed*.
-3. **Calendars** (months, years, intercalation — the human scheduling layer) — Gregorian (Earth's parameters hardcoded), the **Darian calendar** (Gangale, 1986–2006; a hand-crafted calendar for Mars specifically). This layer defines *what day it means*.
+## English
 
-The Huaxia formula differs from prior layer-3 work in kind, not degree: it is not another hand-crafted calendar for one body, but a **parametric generator** — feed it (Y₁, local day, satellites, N) and it emits the calendar, including whether intercalation exists at all (Mode A test), for any body. Layer 1 and 2 standards are complementary, not competing: a deployed Huaxia calendar for Mars would sit on top of Allison–McEwen solar time exactly as the Gregorian calendar sits on top of UTC.
+Huaxia Li organizes time through solar–lunar relations, seasonal markers and parallel cycles. It explores a parametric structure across planetary settings. Historical foundations, mathematical statements, software behavior and astronomical applicability require separate evidence.
 
-## Paper
+This is an **unreleased local revision**, not a certified civil calendar. Classification examples do not prove universality; multi-star configuration is not a many-body solver. The month counter distinguishes empty months from groups containing them and exposes `L₀=M−Q+E`. Fractional cycle ratios are not exact intercalation counts. See [revision notes](REVISION.md) for unresolved work. Reproducible contributions are welcome.
+
+## 已发表论文 / Published paper — unchanged
 
 Jia Runzhang (2026). *The Huaxia Li (华夏历): A Misclassified Planetary Timekeeping Methodology and Its Architectural Relevance to Self-Sovereign Computing Systems.*
 
-- Zenodo: https://doi.org/10.5281/zenodo.19571784
-- SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6576158
+- [Paper DOI](https://doi.org/10.5281/zenodo.19571784)
+- [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6576158)
+- [Software archive, all versions](https://doi.org/10.5281/zenodo.21133058)
+- [Original v1.1.0 software archive](https://doi.org/10.5281/zenodo.21133059)
 
-## Citing
-
-See [`CITATION.cff`](CITATION.cff) (GitHub renders a "Cite this repository" button). Please cite the paper DOI above for the methodology, and the software archive for the tools and verification scripts:
-
-- Code (all versions): https://doi.org/10.5281/zenodo.21133058
-- Code (v1.1.0 snapshot): https://doi.org/10.5281/zenodo.21133059
-
-## Deploy
-
-```bash
-npm install
-npm run build
-# Output in /docs — ready for GitHub Pages
-```
-
-Set GitHub Pages source to `docs/` folder on the `main` branch.
-> **Note:** Enabling Pages must be done manually by the repo owner in Settings → Pages (Branch: main, Folder: /docs).
-
-## Bilingual
-
-All tools support Chinese/English toggle (中文/EN button).
-
-## Data Sources
-
-NASA JPL Planetary Fact Sheets · NASA Kepler/TESS · ESO HARPS/SPHERE/VLT · Spitzer/JWST · Agol et al. 2021 · Doyle et al. 2011 · Teachey & Kipping 2018 · Bonfils et al. 2026 · Kral et al. 2026
-
-## License
-
-Apache 2.0
+See [CITATION.cff](CITATION.cff). These links identify existing publications, not this unreleased revision. License: Apache 2.0.

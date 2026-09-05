@@ -1,36 +1,38 @@
 import { useState, useMemo } from "react";
-import { bestRational, toSynodic } from "./formula.js";
+import { CANDIDATE_EVIDENCE } from "./core/候选来源.mjs";
+import { bestRational } from "./formula.js";
+import { CANDIDATES, analyzeCandidate } from "./core/候选演算.mjs";
 
 const T = {
   zh: {
     header: "华夏历 · 甲型系外卫星猎手",
-    subtitle: "在已知系外卫星候选体中搜索满足置闰条件 Y₁/N ≤ Tᵢ < 2Y₁/N 的甲型实例",
+    subtitle: "用给定参数探索平均周期分型 Y₁/N ≤ Tᵢ < 2Y₁/N，不是置闰定理",
     confirmed: (n) => n > 0 ? `其中 ${n} 已确认` : "",
     candidates: (n) => n > 0 ? `${n} 候选` : "",
-    maybeLabel: (n) => n > 0 ? `· ${n} 个在不确定性范围内可能甲型` : "",
+    maybeLabel: (n) => n > 0 ? `· ${n} 个在演示范围内可能甲型` : "",
     isModeA: "✓ 甲型！",
     maybeA: "⚠ 范围可能甲型",
     notA: "✗ 非甲型",
     gaugeLabel: "Tᵢ 在甲型范围中的位置 (绿色区域=甲型)",
-    analysisOk: "✓ 满足甲型条件！可触发置闰交叉验证",
-    analysisMaybe: "⚠ 不确定性范围与甲型区间有交集",
+    analysisOk: "给定参数满足甲型分型；不代表已认证置闰",
+    analysisMaybe: "演示范围与甲型区间有交集",
     analysisFail: "✗ 不满足甲型条件",
-    intercalaryTitle: "置闰预测",
+    intercalaryTitle: "平均周期比（不是置闰预测）",
     monthsPerYear: "月/年",
     intMonths: "整数月数",
     fraction: "年余分",
-    leapFreq: "置闰频率 ≈ 每",
+    leapFreq: "余分倒数 ≈",
     years: "年",
     localYears: "本地年",
     leapDayTitle: "宿主行星岁余",
     leapDayCycle: (p, q) => `每 ${q} 年插 ${p} 个闰日`,
-    zhangVerify: (p, q) => `最优章法 (${p}/${q}) =`,
+    zhangVerify: (p, q) => `余分有理近似 (${p}/${q}) =`,
     error: "误差",
-    conclusionTitle: "发现",
-    conclusion1: "除地球月球外，存在至少一个系外卫星候选体满足甲型条件——这意味着华夏历的置闰机制不仅仅是地球的特例，而是在其他恒星系统中也能被实例化的通用结构。",
-    conclusion2: "目前仅地球月球是唯一已确认的甲型实例，但部分候选体的不确定性范围与甲型区间有交集。随着JWST和VLTI/GRAVITY+的观测精度提升，未来可能发现更多甲型实例。",
-    conclusion3: "目前仅地球月球是唯一已知的甲型实例。",
-    conclusionNote: "需要注意：截至2026年，尚无任何系外卫星被正式确认。上述候选体均需进一步验证。但公式的价值在于——它提前给出了判定标准：只要 Y₁/N ≤ Tᵢ < 2Y₁/N，置闰自动成立，无需重新设计。标准在那里等着数据。",
+    conclusionTitle: "本页输入的分类结果",
+    conclusion1: "本页至少一组系外候选演示参数落入甲型区间。它不证明候选体存在，也不证明通用置闰规则成立。",
+    conclusion2: "本页有演示范围与甲型区间相交；须分别核实天体、周期及历法规则。",
+    conclusion3: "当前输入未提供额外的甲型系外算例，不代表所有天体的普查结论。",
+    conclusionNote: "本页不是完整候选目录。系外条目保留候选身份；周期范围目前只作演示，不冒充观测置信区间。满足平均周期不等式不保证实际置闰，仍须定义事件、相位、日界及年界。",
     footer1: "数据来源：Teachey & Kipping 2018 (Science Advances) · Kipping et al. 2022 (Nature Astronomy) · Kral et al. 2026 (A&A) · NASA Kepler/HST · ESO VLTI/GRAVITY+",
     footer2: "分析框架：贾润章《华夏历》2026 · §4 甲型条件 Y₁/N ≤ Tᵢ < 2Y₁/N（等价于 月数/年 ∈ (N/2, N]）· N 为太阳侧分辨率约定（此处24）——卫星受判于 N，不定义 N",
     orbitLabel: "绕",
@@ -39,52 +41,52 @@ const T = {
     modeARange: "甲型范围",
     tiEst: "Tᵢ (估计)",
     tiRatio: "Tᵢ/Z",
-    tiRange: "Tᵢ范围",
+    tiRange: "演示周期范围（非置信区间）",
     days: "天",
     earthYears: "地球年",
     statusMap: { "已确认": "已确认", "争议中": "争议中", "初步信号": "初步信号" },
     analysisSatPeriod: (Ti, lo, hi, pct) => `卫星朔望周期 Tᵢ=${Ti}天 落在 [${lo}, ${hi}) 天的甲型范围内。Tᵢ/Z = ${pct}%。`,
-    analysisNearZ: " 接近Z上限，与地球月球(97%)类似——近共振状态，置闰规则可以用「无中气」观测法直接实施。",
-    analysisMidRange: " 位于甲型中段，置闰频率较高，但「无中气」规则依然适用。",
-    analysisEarthLike: (Y1) => ` 行星年(${Y1}天)与地球(365.25天)在同一量级——这是一个"类地华夏历"的真实候选！`,
+    analysisNearZ: " 接近平均Z上限；仅是周期比关系，尚须检验事件分布。",
+    analysisMidRange: " 位于平均周期分型区间内，不据此预测闰月频率。",
+    analysisEarthLike: (Y1) => ` 行星年(${Y1}天)与地球(365.25天)在同一量级；仅作年长比较，不证明宜居性或历法适用性。`,
     dirBelow: "低于", dirAbove: "高于",
-    analysisMaybeText: (Ti, dir, rlo, rhi, alo, ahi) => `估计值 Tᵢ≈${Ti}天 ${dir}甲型范围，但观测不确定性范围 [${rlo}, ${rhi}] 天与甲型区间 [${alo}, ${ahi}] 天存在交集。若未来观测精度提高并确认Tᵢ落入该范围，则甲型条件成立。`,
+    analysisMaybeText: (Ti, dir, rlo, rhi, alo, ahi) => `估计值 Tᵢ≈${Ti}天 ${dir}甲型范围，但演示范围（来源待核） [${rlo}, ${rhi}] 天与甲型区间 [${alo}, ${ahi}] 天存在交集。若未来观测精度提高并确认Tᵢ落入该范围，则甲型条件成立。`,
     analysisPeriodNotA: (Ti, limitStr) => `卫星周期 Tᵢ≈${Ti}天 ${limitStr}。`,
     analysisBelowLo: (lo) => `远低于甲型下限(${lo}天)`,
     analysisAboveHi: (hi) => `高于甲型上限(${hi}天)`,
     analysisModeB: " 归入乙型(Mode B)——可作独立计数轨叠合，但不参与置闰。",
-    leapMonth: "一次闰月",
+    leapMonth: "非实际闰月间隔",
     satisfyModeA: "满足甲型",
   },
   en: {
     header: "Huaxia Calendar · Mode A Exomoon Hunter",
-    subtitle: "Searching known exomoon candidates for Mode A intercalary eligibility: Y₁/N ≤ Tᵢ < 2Y₁/N",
+    subtitle: "Explore mean-period classification Y₁/N ≤ Tᵢ < 2Y₁/N, not an intercalation theorem",
     confirmed: (n) => n > 0 ? `${n} confirmed` : "",
     candidates: (n) => n > 0 ? `${n} candidates` : "",
-    maybeLabel: (n) => n > 0 ? `· ${n} possibly Mode A within uncertainty` : "",
+    maybeLabel: (n) => n > 0 ? `· ${n} possibly Mode A within the demo range` : "",
     isModeA: "✓ Mode A!",
     maybeA: "⚠ Possibly Mode A",
     notA: "✗ Not Mode A",
     gaugeLabel: "Tᵢ position within Mode A range (green zone = Mode A)",
-    analysisOk: "✓ Satisfies Mode A condition — intercalary cross-verification possible",
-    analysisMaybe: "⚠ Uncertainty range overlaps with Mode A interval",
+    analysisOk: "Supplied parameters meet Mode A; intercalation is not certified",
+    analysisMaybe: "Demonstration range overlaps Mode A",
     analysisFail: "✗ Does not satisfy Mode A condition",
-    intercalaryTitle: "Intercalary Prediction",
+    intercalaryTitle: "Mean cycle ratio (not an intercalation prediction)",
     monthsPerYear: "months/year",
     intMonths: "Integer months",
     fraction: "Annual fraction",
-    leapFreq: "Intercalary frequency ≈ every",
+    leapFreq: "Reciprocal fraction ≈",
     years: "years",
     localYears: "local years",
     leapDayTitle: "Host Planet Day Surplus",
     leapDayCycle: (p, q) => `${p} leap day(s) per ${q} years`,
-    zhangVerify: (p, q) => `Best Zhang Period (${p}/${q}) =`,
+    zhangVerify: (p, q) => `Rational fraction approximation (${p}/${q}) =`,
     error: "error",
-    conclusionTitle: "Findings",
-    conclusion1: "Beyond Earth's Moon, at least one exomoon candidate satisfies Mode A — meaning the Huaxia Calendar's intercalary mechanism is not Earth-specific but a universal structure instantiable in other stellar systems.",
-    conclusion2: "Earth's Moon remains the only confirmed Mode A instance, but some candidates' uncertainty ranges overlap with the Mode A interval. Improved JWST and VLTI/GRAVITY+ precision may reveal more instances.",
-    conclusion3: "Earth's Moon is currently the only known Mode A instance.",
-    conclusionNote: "Note: As of 2026, no exomoon has been officially confirmed. All candidates require further verification. The formula's value lies in providing the criterion in advance: whenever Y₁/N ≤ Tᵢ < 2Y₁/N, intercalation is automatic. The standard awaits the data.",
+    conclusionTitle: "Classification of this page's inputs",
+    conclusion1: "At least one supplied exomoon parameter set falls in Mode A. This proves neither the candidate's existence nor a universal intercalation rule.",
+    conclusion2: "Some supplied ranges overlap Mode A; the objects, periods and calendar rules require separate verification.",
+    conclusion3: "These inputs provide no additional Mode A exomoon example; this is not a census of all celestial systems.",
+    conclusionNote: "This is not a complete candidate catalogue. Exomoon entries remain candidates; supplied ranges are demonstrations, not observational confidence intervals. Meeting the mean-period inequality does not guarantee intercalation: events, phases and day/year boundaries remain necessary.",
     footer1: "Data: Teachey & Kipping 2018 (Science Advances) · Kipping et al. 2022 (Nature Astronomy) · Kral et al. 2026 (A&A) · NASA Kepler/HST · ESO VLTI/GRAVITY+",
     footer2: "Framework: Jia Runzhang, Huaxia Li (2026) · §4 Mode A condition Y₁/N ≤ Tᵢ < 2Y₁/N (equivalently months/yr ∈ (N/2, N]) · N is a solar-side resolution convention (24 here) — satellites are tested against N, they do not define it",
     orbitLabel: "orbiting",
@@ -93,21 +95,21 @@ const T = {
     modeARange: "Mode A Range",
     tiEst: "Tᵢ (estimated)",
     tiRatio: "Tᵢ/Z",
-    tiRange: "Tᵢ range",
+    tiRange: "Demonstration period range (not confidence interval)",
     days: "days",
     earthYears: "Earth years",
     statusMap: { "已确认": "Confirmed", "争议中": "Disputed", "初步信号": "Initial Signal" },
     analysisSatPeriod: (Ti, lo, hi, pct) => `Satellite synodic period Tᵢ=${Ti} days falls within Mode A range [${lo}, ${hi}) days. Tᵢ/Z = ${pct}%.`,
-    analysisNearZ: " Near the Z upper bound, similar to Earth's Moon (97%) — near-resonance; intercalation can be directly implemented via the no-zhongqi rule.",
-    analysisMidRange: " In the mid-range of Mode A; higher intercalary frequency, but the no-zhongqi rule still applies.",
-    analysisEarthLike: (Y1) => ` Planet year (${Y1} days) is in the same order of magnitude as Earth (365.25 days) — a genuine "Earth-analogue Huaxia Calendar" candidate!`,
+    analysisNearZ: " Near the mean Z upper bound; this is only a ratio, and event distributions still require testing.",
+    analysisMidRange: " Within the mean-period classification interval; no leap frequency follows from this alone.",
+    analysisEarthLike: (Y1) => ` Planet year (${Y1} days) is of the same order as Earth (365.25 days); this comparison does not establish habitability or calendar validity.`,
     dirBelow: "below", dirAbove: "above",
-    analysisMaybeText: (Ti, dir, rlo, rhi, alo, ahi) => `Estimated Tᵢ≈${Ti} days is ${dir} the Mode A range, but uncertainty interval [${rlo}, ${rhi}] days overlaps with Mode A range [${alo}, ${ahi}] days. If future observations confirm Tᵢ is within that range, Mode A holds.`,
+    analysisMaybeText: (Ti, dir, rlo, rhi, alo, ahi) => `Estimated Tᵢ≈${Ti} days is ${dir} the Mode A range, but demonstration interval [${rlo}, ${rhi}] days overlaps with Mode A range [${alo}, ${ahi}] days. If future observations confirm Tᵢ is within that range, Mode A holds.`,
     analysisPeriodNotA: (Ti, limitStr) => `Satellite period Tᵢ≈${Ti} days ${limitStr}.`,
     analysisBelowLo: (lo) => `far below the Mode A lower bound (${lo} days)`,
     analysisAboveHi: (hi) => `above the Mode A upper bound (${hi} days)`,
     analysisModeB: " Classified as Mode B — can form independent cycle overlays, but not used for intercalation.",
-    leapMonth: "leap month",
+    leapMonth: "not an actual leap-month interval",
     satisfyModeA: "satisfy Mode A",
   },
 };
@@ -116,120 +118,6 @@ const T = {
 // ALL KNOWN EXOMOON CANDIDATES + HOST PLANETS
 // Real data from Kepler, HST, VLTI/GRAVITY
 // =============================================
-
-const CANDIDATES = [
-  {
-    id: "kepler1625b", N: 24,
-    host: "Kepler-1625 b",
-    hostDesc: "类木气态巨行星，~10 MJ，半径≈Jupiter",
-    star: "Kepler-1625 (类太阳G型恒星, 1.079 M☉)",
-    distance: "8,000 ly",
-    Y1: 287.38, // planet orbital period = stellar year
-    moonName: "Kepler-1625 b I",
-    moonDesc_zh: "海王星大小，~16 M⊕，距行星约40行星半径",
-    moonDesc_en: "Neptune-sized, ~16 M⊕, at roughly 40 planetary radii from the planet",
-    Ti_est: 19, // Teachey & Kipping 2018, Science Advances 4(10): eaav1784, DOI: 10.1126/sciadv.aav1784 — 卫星周期约束宽松, 中心估计 ~19 d (恒星周期)
-    Ti_range: [13, 39], // 复核: Kipping et al. 2022, Nature Astronomy, DOI: 10.1038/s41550-021-01539-1
-    TiIsSynodic: false,
-    confirmed: false,
-    status: "争议中",
-    statusDetail_zh: "2018年Teachey & Kipping (HST)发现证据，2019年Kreidberg等独立分析未确认，2023年Heller等认为可能是假阳性。截至2025年仍未确认。",
-    statusDetail_en: "Evidence reported by Teachey & Kipping (HST) in 2018; not recovered by Kreidberg et al.'s independent 2019 analysis; Heller et al. 2023 argue a possible false positive. Unconfirmed as of 2025.",
-    source: "Teachey & Kipping 2018 (Science Advances), Kipping 2022",
-    localDay: 10, // gas giant, assume fast rotation ~10h
-    localDayAssumed: true,
-  },
-  {
-    id: "kepler1708b", N: 24,
-    host: "Kepler-1708 b",
-    hostDesc: "类木气态巨行星，<4.6 MJ，半径≈0.89 RJ",
-    star: "Kepler-1708 (类太阳恒星)",
-    distance: "5,600 ly",
-    Y1: 737.11, // planet orbital period
-    moonName: "Kepler-1708 b I",
-    moonDesc_zh: "约2.6倍地球半径，距行星约12行星半径",
-    moonDesc_en: "About 2.6 Earth radii, at roughly 12 planetary radii from the planet",
-    Ti_est: 4.6, // roughly estimated from orbital distance
-    Ti_range: [2, 10], // approximate range
-    TiIsSynodic: false,
-    confirmed: false,
-    status: "争议中",
-    statusDetail_zh: "2022年Kipping等发现，2023年Heller & Hippke重新分析认为不太可能存在。",
-    statusDetail_en: "Reported by Kipping et al. 2022; Heller & Hippke's 2023 reanalysis finds it unlikely to exist.",
-    source: "Kipping et al. 2022 (Nature Astronomy)",
-    localDay: 10,
-    localDayAssumed: true,
-  },
-  {
-    id: "hd206893b", N: 24,
-    host: "HD 206893 B",
-    hostDesc: "褐矮星/超木星，~20-28 MJ，半径≈1.25 RJ",
-    star: "HD 206893 (F5V主序星, ~1.3 M☉)",
-    distance: "133 ly",
-    Y1: 25.6 * 365.25, // ~25.6 years in days = 9350 days
-    moonName: "HD 206893 B I",
-    moonDesc_zh: "极大质量，~0.4 MJ (≈9倍海王星质量)，距宿主约0.22 AU",
-    moonDesc_en: "Very massive, ~0.4 MJ (≈9 Neptune masses), at ~0.22 AU from its host",
-    Ti_est: 0.76 * 365.25, // ~0.76 years = ~277.6 days
-    Ti_range: [200, 350], // approximate
-    TiIsSynodic: false,
-    confirmed: false,
-    status: "初步信号",
-    statusDetail_zh: "2026年1月巴黎天文台Kral等使用VLTI/GRAVITY天体测量首次检测。信号显示~9个月周期的天体测量摆动。尚需进一步验证。",
-    statusDetail_en: "First astrometric detection by Kral et al. (Paris Observatory) with VLTI/GRAVITY, January 2026: a ~9-month astrometric wobble. Awaits further verification.",
-    source: "Kral et al. 2026 (A&A), VLTI/GRAVITY",
-    localDay: 10,
-    localDayAssumed: true,
-  },
-  // ── Hypothetical Earth-analogue for comparison ──
-  {
-    id: "earth_ref", N: 24,
-    host_zh: "地球（参考基线）",
-    host_en: "Earth (reference baseline)",
-    hostDesc: "岩质行星，1 M⊕",
-    star: "太阳 (G2V, 1.0 M☉)",
-    distance: "0 ly",
-    Y1: 365.25,
-    moonName: "月球 Moon",
-    moonDesc_zh: "0.0123 M⊕，距地球60.3地球半径",
-    moonDesc_en: "0.0123 M⊕, at 60.3 Earth radii",
-    Ti_est: 29.5306,
-    Ti_range: [29.53, 29.53],
-    TiIsSynodic: true,
-    confirmed: true,
-    status: "已确认",
-    statusDetail_zh: "唯一已知的甲型实例。Tᵢ/Z = 97%，位于甲型范围上界附近。",
-    statusDetail_en: "The only known Mode A instance. Tᵢ/Z = 97%, near the Mode A upper bound.",
-    source: "NASA JPL",
-    localDay: 24,
-  },
-];
-
-function analyzeCandidate(c) {
-  const Z = (2 * c.Y1) / c.N;
-  const lo = c.Y1 / c.N;
-  const hi = Z;
-  const localDayDays = c.localDay / 24;
-
-  const Tsyn = c.TiIsSynodic ? c.Ti_est : toSynodic(c.Ti_est, c.Y1);
-  const TsynRange = c.Ti_range.map(t => c.TiIsSynodic ? t : toSynodic(t, c.Y1));
-
-  const inModeA = Number.isFinite(Tsyn) && Tsyn >= lo && Tsyn < hi;
-  const tooFast = Tsyn < lo;
-  const belowDay = Tsyn < localDayDays;
-  const ratioZ = Tsyn / Z;
-  // Infinity 哨兵（Tsid ≥ Y₁ 的异常输入）不得参与交集判定
-  const rangeOverlapsA = Number.isFinite(TsynRange[0]) && Number.isFinite(TsynRange[1])
-    && TsynRange[0] < hi && TsynRange[1] >= lo;
-  const idealness = ratioZ;
-
-  const daysPerYear = c.localDay > 0 ? c.Y1 / (c.localDay / 24) : null;
-  const fracDay = daysPerYear !== null ? daysPerYear - Math.floor(daysPerYear) : null;
-  const leapDay = (fracDay !== null && fracDay > 0.002 && fracDay < 0.998)
-    ? { ...bestRational(fracDay), daysPerYear } : null;
-
-  return { Z, lo, hi, inModeA, tooFast, belowDay, ratioZ, rangeOverlapsA, idealness, leapDay, Tsyn, TsynRange };
-}
 
 function Gauge({ value, lo, hi, max, label }) {
   // Visual gauge showing where Ti falls relative to Mode A range
@@ -278,6 +166,10 @@ function CandidateCard({ c, t, lang }) {
       borderRadius: 14, padding: "20px 24px", marginBottom: 18,
       boxShadow: isModeA ? "0 0 20px #10b98115" : "none",
     }}>
+      <aside style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 12 }}>
+        {lang === "zh" ? CANDIDATE_EVIDENCE[c.id].zh : CANDIDATE_EVIDENCE[c.id].en}
+        {CANDIDATE_EVIDENCE[c.id].links.map(([label,url]) => <a key={url} href={url} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginLeft: 8, color: "var(--accent)" }}>{label}</a>)}
+      </aside>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
         <div>
@@ -378,7 +270,7 @@ function CandidateCard({ c, t, lang }) {
                   <div>Y₁/Tᵢ = {c.Y1.toFixed(2)} / {a.Tsyn.toFixed(2)} = <b>{mpy.toFixed(4)}</b> {t.monthsPerYear}</div>
                   <div>{t.intMonths} = {Math.floor(mpy)} · {t.fraction} = {frac.toFixed(4)}</div>
                   <div>{t.leapFreq} <b>{interval.toFixed(2)}</b> {c.id === "earth_ref" ? t.years : t.localYears} · {t.leapMonth}</div>
-                  {(() => { const br = bestRational(frac); return <div style={{ color: "var(--dim2)", marginTop: 4 }}>{t.zhangVerify(br.p, br.q)} {(br.p/br.q).toFixed(5)} vs {frac.toFixed(5)} → {t.error} {(Math.abs(br.p/br.q - frac)/frac*100).toFixed(3)}%</div>; })()}
+                  {(() => { const br = bestRational(frac); return <div style={{ color: "var(--dim2)", marginTop: 4 }}>{t.zhangVerify(br.p, br.q)} {(br.p/br.q).toFixed(5)} vs {frac.toFixed(5)} → {t.error} {(frac === 0 ? 0 : Math.abs(br.p/br.q - frac)/frac*100).toFixed(3)}%</div>; })()}
                 </>
               );
             })()}
